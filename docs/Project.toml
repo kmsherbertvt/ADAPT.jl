@@ -1,0 +1,3 @@
+[deps]
+ADAPT = "cf1f529f-af3f-4d7a-b5f1-0e7d3fdd5852"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
