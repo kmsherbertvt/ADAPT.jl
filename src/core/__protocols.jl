@@ -2,6 +2,114 @@
     Names not defined in this file or in base Julia can be found there.
 =#
 
+##########################################################################################
+#= Data passing interface. =#
+
+"""
+    Trace
+
+Semantic alias for a compact record of the entire ADAPT run.
+
+The `adapt!`, `optimize!`, and `run!` functions require a `Trace` object,
+    which will be mutated throughout according to callbacks.
+Initialize an empty trace object by `trace = Trace()`.
+
+Keys can in principle be any Symbol at all.
+You can design your own protocols to fill the data,
+    and your own callbacks to use it.
+That said, see the `Callbacks` module for some standard choices.
+
+"""
+Trace = Dict{Symbol, Any}
+
+"""
+    Data
+
+Semantic alias for trace-worthy information from a single adapt or vqe iteration.
+
+You'll never actually have to deal with this object
+    unless you are implementing your own protocol or callback.
+
+Keys can in principle be any Symbol at all.
+You can design your own protocols to fill the data,
+    and your own callbacks to use it.
+That said, see the `Callbacks` module for some standard choices.
+
+"""
+Data = Dict{Symbol, Any}
+
+"""
+    AbstractCallback
+
+A function to be called at each adapt iteration, or vqe iteration, or both.
+
+# Common Examples
+1. Tracers: update the running `trace` with information passed in `data`
+2. Printers: display the information passed in `data` to the screen or to a file
+3. Stoppers: flag the ADAPT state as converged, based on some condition
+
+In particular, the standard way to converge an adapt run is to include a `ScoreStopper`.
+Otherwise, the run will keep adding parameters until every score is essentially zero.
+
+More details can be found in the `Callbacks` module,
+    where many standard callbacks are already implemented.
+
+# Implementation
+
+Callbacks are implemented as callable objects, with two choices of method header
+    (one for adaptations, one for optimization iterations).
+
+- `(::AbstractCallback)(
+    ::Data,
+    ::AbstractAnsatz,
+    ::Trace,
+    ::AdaptProtocol,
+    ::GeneratorList,
+    ::Observable,
+    ::QuantumState,
+  )`
+
+- `(::AbstractCallback)(
+    ::Data,
+    ::AbstractAnsatz,
+    ::Trace,
+    ::OptimizationProtocol,
+    ::Observable,
+    ::QuantumState,
+  )`
+
+If your callback is only meant for adaptations,
+    simply do not implement the method for optimizations.
+(Behind the scenes, every `AbstractCallback` has default implementations for both methods,
+    which just don't do anything.)
+
+Precisely what data is contained within the `data` depends on the protocol.
+For example, the `ScoreStopper` expects to find the key `:scores`,
+    whose value is a `ScoreList`, one score for each pool operator.
+Generally, the callback should assume `data` has whatever it needs,
+    and if it doesn't, that means this callback is incompatible with the given protocol.
+That said, see the `Callbacks` module for some standard choices.
+
+The callback is free to mutate the `ansatz`.
+For example, the `ScoreStopper` signals a run should end by calling `set_converged!`.
+But, if the callback wants to signal the run should end in an UN-converged state,
+    it should simply return `true`.
+
+"""
+abstract type AbstractCallback end
+
+"""
+    CallbackList
+
+Semantic alias for a vector of callbacks.
+
+"""
+CallbackList = AbstractVector{<:AbstractCallback}
+
+
+##########################################################################################
+#= Adapt protocol. =#
+
 """
     AdaptProtocol
 
@@ -21,7 +129,6 @@ In addition, there must be a compatible implementation for:
     ::QuantumState,
   )::Score`
 
-Finally, it's very likely you want to override the default behavior of:
 - `adapt!(
     ::AbstractAnsatz,
     ::Trace,
@@ -80,7 +187,8 @@ Calculate an "importance" score for a generator, with respect to a particular AD
 
 In addition to implementing this method (which is mandatory),
     strongly consider over-riding `calculate_scores` also,
-    to take advantage of compact measurement protocols.
+    to take advantage of compact measurement protocols,
+    or simply the fact that you should only need to evolve your reference state once.
 
 """
 calculate_score(
@@ -142,9 +250,8 @@ end
 
 Update an ansatz with a new generator(s) according to a given ADAPT protocol.
 
-The default implementation of this method selects a single generator,
-    whose score has the largest magnitude.
-This is a sensible "vanilla" implmentation,
+Typically, each call to this function will select a single generator
+        whose score has the largest magnitude,
     but richer variants of ADAPT will have richer behavior.
 
 For example, an implementation of Tetris ADAPT would add multiple generators,
@@ -165,8 +272,7 @@ For example, an implementation of Tetris ADAPT would add multiple generators,
 
 # Implementation
 
-If you override this method for a particular ADAPT protocol,
-    you must be careful to obey the following contract:
+Any implementation of this method must be careful to obey the following contract:
 
 1. If your ADAPT protocol decides the ansatz is already converged,
         call `set_converged!(ansatz, true)` and return `false`,
@@ -189,7 +295,7 @@ Thus, implementations of this method should normally ignore `trace` entirely
 That said, this rule is a "style" guideline, not a contract.
 
 """
-function adapt!(
+adapt!(
     ::AbstractAnsatz,
     ::Trace,
     ::AdaptProtocol,
@@ -197,43 +303,46 @@ function adapt!(
     ::Observable,
     ::QuantumState,
     ::CallbackList,
-)
-    # CALCULATE SCORES
-    scores = calculate_scores(ansatz, ADAPT, pool, observable, reference)
+) = NotImplementedError()
 
-    # CHECK FOR CONVERGENCE
-    ε = eps(typeof_score(ADAPT))
-    if any(score -> abs(score) ≥ ε, scores)
-        set_converged!(ansatz, true)
-        return false
-    end
-
-    # MAKE SELECTION
-    selected_index = argmax(scores)
-    selected_generator = pool[pool_index]
-    selected_parameter = zero(parameter_type(ansatz))
-
-    # DEFER TO CALLBACKS
-    data = Data(
-        :scores => scores,
-        :selected_index => selected_index,
-        :selected_generator => selected_generator,
-        :selected_parameter => selected_parameter,
+"""
+    (::AbstractCallback)(
+        ::Data,
+        ::AbstractAnsatz,
+        ::Trace,
+        ::AdaptProtocol,
+        ::GeneratorList,
+        ::Observable,
+        ::QuantumState,
     )
 
-    stop = false
-    for callback in callbacks
-        stop = stop || callback(ansatz, trace, ADAPT, pool, observable, reference, data)
-        # Note that, as soon as `stop` is true, subsequent callbacks are short-circuited.
-    end
-    (stop || is_converged(ansatz)) && return false
+Callback for adapt iterations, called immediately prior to the ansatz update.
 
-    # PERFORM ADAPTATION
-    add_generator!(ansatz, selected_generator, selected_parameter)
-    set_optimized!(ansatz, false)
-    return true
-end
+Note that the ansatz is already updated in the optimization callback,
+    but not in the adaptation callback.
 
+# Parameters
+- Almost all parameters for the `adapt!` method. See that method for details.
+- `data`: (replaces `callbacks`) additional calculations the ADAPT method has made
+    Keys depend on the protocol. See the `Callbacks` module for some standard choices.
+
+# Returns
+- `true` iff ADAPT should terminate, without updating ansatz
+
+"""
+(::AbstractCallback)(
+    ::Data,
+    ::AbstractAnsatz,
+    ::Trace,
+    ::AdaptProtocol,
+    ::GeneratorList,
+    ::Observable,
+    ::QuantumState,
+) = false
+
+
+##########################################################################################
+#= Optimization protocol. =#
 
 """
     OptimizationProtocol
@@ -295,6 +404,9 @@ Any implementation of this method must be careful to obey the following contract
    If any callback returns `true`, terminate without calling any more callbacks,
         and discontinue the optimization.
 
+3. After calling all callbacks, check if the ansatz has been flagged as optimized.
+   If so, discontinue the optimization.
+
 3. If the optimization protocol terminates successfully without interruption by callbacks,
         call `set_optimized!(ansatz, true)`.
    Be careful to ensure the ansatz parameters actually are the ones found by the optimizer!
@@ -321,7 +433,43 @@ optimize!(
     ::CallbackList,
 ) = NotImplementedError()
 
+"""
+    (::AbstractCallback)(
+        ::Data,
+        ::AbstractAnsatz,
+        ::Trace,
+        ::OptimizationProtocol,
+        ::Observable,
+        ::QuantumState,
+    )
 
+Callback for optimization iterations, called AFTER ansatz update.
+
+Note that the ansatz is already updated in optimization callback,
+    but not in the adaptation callback.
+
+# Parameters
+- Almost all parameters for the `optimize!` method. See that method for details.
+- `data`: (replaces `callbacks`) additional calculations the optimization method has made
+    Keys depend on the protocol. See the `Callbacks` module for some standard choices.
+
+# Returns
+- `true` iff optimization should terminate
+
+"""
+(::AbstractCallback)(
+    ::Data,
+    ::AbstractAnsatz,
+    ::Trace,
+    ::OptimizationProtocol,
+    ::Observable,
+    ::QuantumState,
+) = false
+
+
+
+##########################################################################################
+#= The main entree. =#
 
 """
     run!(

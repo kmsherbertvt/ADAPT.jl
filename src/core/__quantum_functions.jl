@@ -28,15 +28,17 @@ end
 
 Apply an ansatz to the given quantum state, mutating the state.
 
+By default, generators with a lower index are applied to the state earlier.
+This means that the equation for |Ψ⟩ would list out generators in reverse order.
+Specific implementations of ansatze may override this behavior.
+
 """
 function evolve_state!(
     ansatz::AbstractAnsatz,
     state::QuantumState,
 )::QuantumState
-    generators = get_generators(ansatz)
-    parameters = get_parameters(ansatz)
-    for i in eachindex(generators)
-        evolve_state!(generators[i], parameters[i], state)
+    for (generator, parameter) in ansatz
+        evolve_state!(generator, parameter, state)
     end
     return state # It's conventional to return the mutated object, but it's not mandatory.
 end
@@ -120,61 +122,35 @@ evaluate(
 
 
 """
-    calculate_gradient(
-        ansatz::AbstractAnsatz,
-        H::Observable,
-        ψ0::QuantumState,
-    )
-
-Evaluate the gradient of a cost-function with respect to a particular ADAPT state.
-
-# Parameters
-- `ansatz`: the ADAPT state
-- `H`: the object defining the cost-function
-- `ψ0`: an initial quantum state which the `ansatz` operates on
-
-# Returns
-- `gradient`: a vector of type `typeof_energy(observable)`.
-        `gradient[i]` is `∂⟨H⟩/∂x[i]`, where `x` is the vector `get_parameters(ansatz)`
-
-"""
-function calculate_gradient(
-    ansatz::AbstractAnsatz,
-    observable::Observable,
-    reference::QuantumState,
-)
-    L = length(get_parameters(ansatz))
-    gradient = Vector{energy_type(observable)}(undef, L)
-    calculate_gradient!(gradient, ansatz, observable, reference)
-    return gradient
-end
-
-
-"""
-    calculate_gradient!(
-        gradient::EnergyList,
+    partial(
+        index::Int,
         ansatz::AbstractAnsatz,
         observable::Observable,
         reference::QuantumState,
     )
 
-Update `gradient` to that of a cost-function with respect to a particular ADAPT state.
+The partial derivative of a cost-function with respect to the i-th parameter in an ansatz.
+
+# Parameters
+- `index`: the index of the parameter to calculate within `ansatz`
+- `ansatz`: the ADAPT state
+- `H`: the object defining the cost-function
+- `ψ0`: an initial quantum state which the `ansatz` operates on
+
+# Returns
+- a number of type `typeof_energy(observable)`.
 
 # Implementation
 
-This is simply an "in-place" version of `calculate_gradient`;
-    the idea is that you only have to allocate the gradient vector once,
-    at the start of an optimization.
-
-Most high-performance optimization packages prefer this sort of interface,
-    so it is the one you should define, and it is usually the one you should use.
-
-The "not-in-place" version of the method is really
-    only meant for convenience when playing in the REPL.
+Typically, generators apply a unitary rotation,
+    so the partial consists of a partial evolution up to the indexed generator,
+    then a "kick" from the generator itself, then a final evolution,
+    and a braket with the observable.
+But, different ansatze may have a different procedure.
 
 """
-calculate_gradient!(
-    gradient::EnergyList,
+partial(
+    index::Int,
     ansatz::AbstractAnsatz,
     observable::Observable,
     reference::QuantumState,

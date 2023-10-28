@@ -2,14 +2,8 @@
     Names not defined in this file or in base Julia can be found there.
 =#
 
-# TODO: import the Pauli library in ADAPT.jl
-#= TODO: Assuming "ScaledPauliVector" is still considered kosher,
-    let's let that one, where order is imposed, be the implicitly Trotterized version,
-    leaving evolution of "PauliSum" to be exact, no matter the cost.
-    (But remember we should be able to do it with KrylovKit,
-      so I don't think we need to build any matrix.)
-=#
-
+import PauliOperators: AbstractPauli
+import PauliOperators: SparseKetBasis
 
 """
     AbstractGenerator
@@ -45,12 +39,20 @@ There must be a compatible implementation for each of:
     ::QuantumState,
   )::Score`
 
+- `adapt!(
+    ::AbstractAnsatz,
+    ::Trace,
+    ::AdaptProtocol,
+    ::GeneratorList,
+    ::Observable,
+    ::QuantumState,
+    ::CallbackList,
+  )`
+
 """
 Generator = Union{
     AbstractGenerator,
-    FixedPhasePauli,
-    PauliSum,
-    ScaledPauliVector,
+    AbstractPauli,
 }
 
 """
@@ -93,11 +95,11 @@ In addition, there must be a compatible implementation for each of:
     ::QuantumState,
   )::Energy`
 
-- `calculate_gradient!(
-    ::EnergyList,
-    ::AbstractAnsatz,
-    ::Observable,
-    ::QuantumState,
+- `partial(
+    index::Int,
+    ansatz::AbstractAnsatz,
+    observable::Observable,
+    reference::QuantumState,
   )`
 
 - `calculate_score(
@@ -107,6 +109,16 @@ In addition, there must be a compatible implementation for each of:
     ::Observable,
     ::QuantumState,
   )::Score`
+
+- `adapt!(
+    ::AbstractAnsatz,
+    ::Trace,
+    ::AdaptProtocol,
+    ::GeneratorList,
+    ::Observable,
+    ::QuantumState,
+    ::CallbackList,
+  )`
 
 - `optimize!(
     ::AbstractAnsatz,
@@ -120,9 +132,7 @@ In addition, there must be a compatible implementation for each of:
 """
 Observable = Union{
     AbstractObservable,
-    FixedPhasePauli,
-    PauliSum,
-    ScaledPauliVector,
+    AbstractPauli,
 }
 
 """
@@ -172,11 +182,11 @@ There must be a compatible implementation for each of:
     ::QuantumState,
   )::Energy`
 
-- `calculate_gradient!(
-    ::EnergyList,
-    ::AbstractAnsatz,
-    ::Observable,
-    ::QuantumState,
+- `partial(
+    index::Int,
+    ansatz::AbstractAnsatz,
+    observable::Observable,
+    reference::QuantumState,
   )`
 
 - `calculate_score(
@@ -186,6 +196,16 @@ There must be a compatible implementation for each of:
     ::Observable,
     ::QuantumState,
   )::Score`
+
+- `adapt!(
+    ::AbstractAnsatz,
+    ::Trace,
+    ::AdaptProtocol,
+    ::GeneratorList,
+    ::Observable,
+    ::QuantumState,
+    ::CallbackList,
+  )`
 
 - `optimize!(
     ::AbstractAnsatz,
@@ -199,5 +219,6 @@ There must be a compatible implementation for each of:
 """
 QuantumState = Union{
     AbstractQuantumState,
+    SparseKetBasis,
     Vector{<:Complex},
 }

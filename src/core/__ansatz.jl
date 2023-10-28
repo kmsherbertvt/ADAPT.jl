@@ -3,7 +3,7 @@
 =#
 
 """
-    AbstractAnsatz
+    AbstractAnsatz{F,G}
 
 An image of an ADAPT protocol in a frozen state.
 
@@ -15,25 +15,43 @@ For example, a version of ADAPT which carries information
     on the inverse Hessian across ADAPT iterations
     would need to operate on an ansatz type which includes the inverse Hessian.
 
+Nevertheless, every sub-type of AbstractAnsatz implements the AbstractVector interface,
+    where elements are pairs `(generator => parameter)`.
+
+So, for example, an ansatz maintaining an inverse Hessian would need
+    to override `push!` `insert!`, etc. to ensure the dimension of the Hessian matches.
+
+# Type Parameters
+- `F`: the number type of the parameters (usually `Float64`)
+- `G`: the subtype of `Generator`
+
 # Implementation
 
 Sub-types must implement the following methods:
-- `typeof_parameter(::AbstractAnsatz)::Type{<:Parameter}`
-- `get_generators(::AbstractAnsatz)::GeneratorList`
-- `get_parameters(::AbstractAnsatz)::ParameterList`
-- `is_optimized(::AbstractAnsatz)::Bool`
-- `is_converged(::AbstractAnsatz)::Bool`
-- `set_optimized!(::AbstractAnsatz, ::Bool)`
-- `set_converged!(::AbstractAnsatz, ::Bool)`
-- `add_generator!(::AbstractAnsatz, ::Generator, ::Parameter)`
-- `update_parameters!(::AbstractAnsatz, ::ParameterList)`
+- `__get__generators(::AbstractAnsatz{F,G})::Vector{G}`
+- `__get__parameters(::AbstractAnsatz{F,G})::Vector{F}`
+- `__get__optimized(::AbstractAnsatz{F,G})::Ref{Bool}`
+- `__get__converged(::AbstractAnsatz{F,G})::Ref{Bool}`
+
+Each of these is expected to simply retrieve an attribute of the struct.
+You can call them whatever you'd like, but functionally, here's what they mean:
+- `generators::Vector{G}`: the sequence of generators
+- `parameters::Vector{F}`: the corresponding sequence of parameters
+
+    Note that these vectors will be mutated and resized as needed.
+
+- `optimized::Ref{Bool}`: a flag indicating that the current parameters are optimal
+- `converged::Ref{Bool}`: a flag indicating that the current generators are optimal
+
+    Note that these must be of type `Ref`, so their values can be toggled as needed.
 
 In addition, there must be a compatible implementation for each of:
-- `calculate_gradient!(
-    ::EnergyList,
-    ::AbstractAnsatz,
-    ::Observable,
-    ::QuantumState,
+
+- `partial(
+    index::Int,
+    ansatz::AbstractAnsatz,
+    observable::Observable,
+    reference::QuantumState,
   )`
 
 - `calculate_score(
@@ -44,6 +62,16 @@ In addition, there must be a compatible implementation for each of:
     ::QuantumState,
   )::Score`
 
+- `adapt!(
+    ::AbstractAnsatz,
+    ::Trace,
+    ::AdaptProtocol,
+    ::GeneratorList,
+    ::Observable,
+    ::QuantumState,
+    ::CallbackList,
+  )`
+
 - `optimize!(
     ::AbstractAnsatz,
     ::Trace,
@@ -53,10 +81,42 @@ In addition, there must be a compatible implementation for each of:
     ::CallbackList,
   )`
 
+That said, most basic implementations of these methods are defined for abstract ansatze,
+    so you oughtn't need to worry about them.
+
 Please see individual method documentation for details.
 
 """
-abstract type AbstractAnsatz end
+abstract type AbstractAnsatz{F<:Parameter,G<:Generator} <: AbstractVector{Pair{G,F}} end
+
+__get__generators(::AbstractAnsatz{F,G}) where {F,G} = NotImplementedError()
+__get__parameters(::AbstractAnsatz{F,G}) where {F,G} = NotImplementedError()
+__get__optimized(::AbstractAnsatz)::Ref{Bool} = NotImplementedError()
+__get__converged(::AbstractAnsatz)::Ref{Bool} = NotImplementedError()
+
+
+##########################################################################################
+#= AbstractVector interface. =#
+
+Base.size(ansatz::AbstractAnsatz) = size(__get__generators(ansatz))
+Base.IndexStyle(::Type{<:AbstractAnsatz}) = IndexLinear()
+
+function Base.getindex(ansatz::AbstractAnsatz, i::Int)
+    return __get__generators(ansatz)[i] => __get__parameters(ansatz)[i]
+end
+
+function Base.setindex!(ansatz::AbstractAnsatz{F,G}, pair::Pair{G,F}, i::Int) where {F,G}
+    __get__generators(ansatz)[i] = pair.first
+    __get__parameters(ansatz)[i] = pair.second
+end
+
+function Base.resize!(ansatz::AbstractAnsatz, nl::Int)
+    resize!(__get__generators(ansatz), nl)
+    resize!(__get__parameters(ansatz), nl)
+end
+
+##########################################################################################
+#= Ansatz-specific interface. =#
 
 """
     typeof_parameter(::AbstractAnsatz)
@@ -67,39 +127,7 @@ I think this will always be a sub-type of `AbstractFloat`,
     and almost always `Float64`.
 
 """
-typeof_parameter(::AbstractAnsatz) = NotImplementedError()
-
-"""
-    get_parameters(::AbstractAnsatz)
-
-The vector of parameters currently used in this ansatz.
-
-# Implementation
-
-Return a vector whose elements sub-type `Parameter`,
-    presumably just fetching an attribute of your object.
-
-To allow protocols and callbacks the greatest flexibility,
-    modifications to the vector returned here SHOULD modify the ansatz itself.
-
-"""
-get_parameters(::AbstractAnsatz) = NotImplementedError()
-
-"""
-    get_generators(::AbstractAnsatz)
-
-The vector of parameters currently used in this ansatz.
-
-# Implementation
-
-Return a vector whose elements sub-type `Generator`,
-    presumably just fetching an attribute of your object.
-
-To allow protocols and callbacks the greatest flexibility,
-    modifications to the vector returned here SHOULD modify the ansatz itself.
-
-"""
-get_generators(::AbstractAnsatz) = NotImplementedError()
+typeof_parameter(::AbstractAnsatz{F,G}) where {F,G} = F
 
 """
     is_optimized(::AbstractAnsatz)
@@ -111,75 +139,46 @@ Note that this is a state variable in its own right;
     but depends on all the protocols and callbacks
     which brought the ansatz to its current state.
 
-# Implementation
-
-Return a Bool, presumably just fetching an attribute of your type.
-
 """
-is_optimized(::AbstractAnsatz) = NotImplementedError()
+is_optimized(ansatz::AbstractAnsatz) = __get__optimized(ansatz)[]
+
 
 """
     is_converged(::AbstractAnsatz)
 
-Check whether the sequence of generators in this ansatz are flagged as converged.
+Check whether the sequence of generators in this ansatz are flagged as optimal.
 
 Note that this is a state variable in its own right;
     its value is independent of the actual generators themselves,
     but depends on all the protocols and callbacks
     which brought the ansatz to its current state.
 
-# Implementation
-
-Return a Bool, presumably just fetching an attribute of your type.
-
 """
-is_converged(::AbstractAnsatz) = NotImplementedError()
+is_converged(ansatz::AbstractAnsatz) = __get__converged(ansatz)[]
 
 """
     set_optimized!(::AbstractAnsatz, ::Bool)
 
 Flag the ansatz parameters as optimal.
 
-# Implementation
-
-Presumably, just set an attribute of your type.
-
 """
-set_optimized!(::AbstractAnsatz, ::Bool) = NotImplementedError()
+set_optimized!(ansatz::AbstractAnsatz, flag::Bool) = __get__optimized(ansatz)[] = flag
+
 
 """
     set_converged!(::AbstractAnsatz, ::Bool)
 
-Flag the sequence of generators in this ansatz as converged.
-
-# Implementation
-
-Presumably, just set an attribute of your type.
+Flag the sequence of generators in this ansatz as optimal.
 
 """
-set_converged!(::AbstractAnsatz, ::Bool) = NotImplementedError()
+set_converged!(ansatz::AbstractAnsatz, flag::Bool) = __get__converged(ansatz)[] = flag
 
 """
-    add_generator!(::AbstractAnsatz, ::Generator, ::Parameter)
-
-Add a new generator (with corresponding parameter) to the ansatz.
-
-# Implementation
-
-Presumably, just append each argument to the appropriate vector attribute of your type.
-
-"""
-add_generator!(::AbstractAnsatz, ::Generator, ::Parameter) = NotImplementedError()
-
-"""
-    update_parameters!(::AbstractAnsatz, ::ParameterList)
+    bind!(::AbstractAnsatz, ::ParameterList)
 
 Replace all parameters in the ansatz.
 
-# Implementation
-
-Presumably, just copy the given parameter vector into a vector attribute of your type.
-
 """
-update_parameters!(::AbstractAnsatz, ::ParameterList) = NotImplementedError()
-
+function bind!(ansatz::AbstractAnsatz{F,G}, x::AbstractVector{F}) where {F,G}
+    __get__parameters(ansatz) .= x
+end
