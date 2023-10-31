@@ -21,7 +21,7 @@ function optimize!(
 )
     # MEASURE ENERGY
     energy = ADAPT.evaluate(ansatz, observable, reference)
-    data = Dict(:energy => energy)
+    data = ADAPT.Data(:energy => energy)
 
     # CALL ONE ROUND OF CALLBACKS
     stop = false

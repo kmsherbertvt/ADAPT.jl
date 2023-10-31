@@ -1,78 +1,14 @@
 import ..ADAPT
 
-import LinearAlgebra
+import .MyPauliOperators
+import .MyPauliOperators: SparseKetBasis
+import .MyPauliOperators: AbstractPauli, FixedPhasePauli, ScaledPauliVector, PauliSum
+PauliOperators = MyPauliOperators
+# TODO: Replace `MyPauliOperators` with `PauliOperators`
 
-import PauliOperators
-import PauliOperators: KetBitString, SparseKetBasis
-import PauliOperators: AbstractPauli
-import PauliOperators: FixedPhasePauli, ScaledPauliVector
-import PauliOperators: PauliSum, ScaledPauli
+AnyPauli = Union{AbstractPauli, PauliSum, ScaledPauliVector}
 
-################################################################################
-#= TODO: These belong in PauliOperators, probably. =#
-################################################################################
-function Base.sum!(ψ1::SparseKetBasis{N,T}, ψ2::SparseKetBasis{N,T}) where {N,T}
-    for (ket, c) in ψ2
-        sum!(ψ1, ket, c)
-    end
-end
-
-function clip!(ψ::SparseKetBasis{N,T}; thresh=1e-16) where {N,T}
-    filter!(p -> abs(p.second) > thresh, ψ)
-end
-
-function rotate!(
-    state::AbstractVector,
-    pauli::FixedPhasePauli,
-    angle::Number,
-)
-    sinebranch = pauli * state
-    #= TODO: Allocations! Should use `mul!(tmp, G, ψ0)` somehow... =#
-    sinebranch .*= sin(angle)
-    state .*= cos(angle)
-    state .+= sinebranch
-end
-
-function rotate!(
-    state::SparseKetBasis,
-    pauli::FixedPhasePauli,
-    angle::Number,
-)
-    sinebranch = pauli * state
-    PauliOperators.scale!(sinebranch, sin(angle))
-    PauliOperators.scale!(state, cos(angle))
-    sum!(state, sinebranch)
-end
-
-function expectation_value(
-    pauli::AbstractPauli,
-    state::Union{SparseKetBasis,AbstractVector},
-)
-    bra = pauli * state
-    #= TODO: Allocations! Should use `mul!(tmp, pauli, state)` somehow... =#
-    return LinearAlgebra.dot(state, bra)
-end
-
-function braket(
-    pauli::AbstractPauli,
-    bra::Union{SparseKetBasis,AbstractVector},
-    ket::Union{SparseKetBasis,AbstractVector},
-)
-    covector = pauli * ket
-    #= TODO: Allocations! Should use `mul!(tmp, pauli, ket)` somehow... =#
-    return LinearAlgebra.dot(bra, covector)
-end
-
-function LinearAlgebra.lmul!(
-    pauli::AbstractPauli,
-    state::SparseKetBasis,
-)
-    #= TODO: Alas, I think this needs to be done separately for each Pauli type. =#
-end
-
-################################################################################
-
-ADAPT.typeof_energy(::AbstractPauli) = Float64
+ADAPT.typeof_energy(::AnyPauli) = Float64
 #= NOTE:
     This type assertion assumes two things:
     1. Scaled AbstractPaulis are hard-coded to used `ComplexF64`.
@@ -89,8 +25,8 @@ function ADAPT.evolve_state!(
     θ::ADAPT.Parameter,
     Ψ::ADAPT.QuantumState,
 )
-    rotate!(Ψ, G, θ)
-    Ψ isa SparseKetBasis && clip!(Ψ)
+    PauliOperators.rotate!(Ψ, G, θ)
+    Ψ isa SparseKetBasis && PauliOperators.clip!(Ψ)
 end
 
 function ADAPT.evolve_state!(
@@ -99,7 +35,10 @@ function ADAPT.evolve_state!(
     Ψ::ADAPT.QuantumState,
 )
     for scaled in G
-        rotate!(Ψ, scaled.pauli, scaled.coeff * θ)
+        # CALCULATE COEFFICIENT, ACCOUNTING FOR IMPLICIT `i` FOR EACH Y in `G.pauli`
+        coeff = PauliOperators.get_phase(scaled.pauli) * scaled.coeff
+        # EVOLVE BY FIXED-PHASE PAULI
+        ADAPT.evolve_state!(scaled.pauli, coeff * θ, Ψ)
     end
 end
 
@@ -124,10 +63,10 @@ end
 
 
 function ADAPT.evaluate(
-    H::AbstractPauli,
+    H::AnyPauli,
     Ψ::ADAPT.QuantumState,
 )
-    return real(expectation_value(H, Ψ))
+    return real(PauliOperators.expectation_value(H, Ψ))
 end
 
 
@@ -159,7 +98,7 @@ Ansatz sub-types may change both behaviors.
 function ADAPT.partial(
     index::Int,
     ansatz::ADAPT.AbstractAnsatz,
-    observable::ADAPT.Observable,
+    observable::AnyPauli,
     reference::ADAPT.QuantumState,
 )
     state = deepcopy(reference)
@@ -167,18 +106,50 @@ function ADAPT.partial(
     # PARTIAL EVOLUTION
     for i in 1:index
         generator, parameter = ansatz[i]
-        evolve_state!(generator, parameter, state)
+        ADAPT.evolve_state!(generator, parameter, state)
     end
 
     # REFLECTION
-    costate = pauli * state
+    generator, _ = ansatz[index]
+    costate = -im * generator * state
+    # TODO: This line here feels wrong. I'm not sure why.
 
     # FINISH EVOLUTION
     for i in 1+index:length(ansatz)
         generator, parameter = ansatz[i]
-        evolve_state!(generator, parameter, state)
-        evolve_state!(generator, parameter, costate)
+        ADAPT.evolve_state!(generator, parameter, state)
+        ADAPT.evolve_state!(generator, parameter, costate)
     end
 
-    return -2 * real(braket(observable, costate, state))
+    return 2 * real(PauliOperators.braket(observable, costate, state))
+end
+
+
+##########################################################################################
+#= Default scoring. Variant ADAPT protocols will probably want to override this. =#
+
+function ADAPT.calculate_score(
+    ansatz::ADAPT.AbstractAnsatz,
+    ::ADAPT.AdaptProtocol,
+    generator::AnyPauli,
+    observable::AnyPauli,
+    reference::ADAPT.QuantumState,
+)
+    state = ADAPT.evolve_state(ansatz, reference)
+    return abs(PauliOperators.measure_commutator(generator, observable, state))
+end
+
+function ADAPT.calculate_scores(
+    ansatz::ADAPT.AbstractAnsatz,
+    ::ADAPT.AdaptProtocol,
+    pool::AnyPauli,
+    observable::AnyPauli,
+    reference::ADAPT.QuantumState,
+)
+    state = ADAPT.evolve_state(ansatz, reference)
+    scores = Vector{typeof_score(ADAPT)}(undef, length(pool))
+    for i in eachindex(pool)
+        scores[i] = abs(PauliOperators.measure_commutator(pool[i], observable, state))
+    end
+    return scores
 end

@@ -17,7 +17,7 @@ IMPORTANT: the `callback` attribute of `options` will be generated automatically
         you'll need to implement your own `OptimizationProtocol`.
 
 """
-struct OptimOptimizer
+struct OptimOptimizer <: ADAPT.OptimizationProtocol
     method::Optim.AbstractOptimizer
     options::Optim.Options
 end
@@ -41,7 +41,7 @@ function OptimOptimizer(method::Symbol; options...)
 
     # EXTRACT METHOD kwargs FROM options
     method_fields = fieldnames(method_type)
-    method_kwargs = Dict(Symbol, Any)
+    method_kwargs = Dict{Symbol, Any}()
     for field in keys(options)
         if field in method_fields
             method_fields[field] = pop!(options, field)
@@ -56,7 +56,7 @@ function OptimOptimizer(method::Symbol; options...)
 end
 
 function options_with_callback(options, callback)
-    cb = options.store_trace ? callback : (trace) -> callback(last(trace))
+    cb = options.store_trace ? (trace) -> callback(last(trace)) : callback
     kwargs = Dict(field=>getfield(options, field) for field in fieldnames(Optim.Options))
     return Optim.Options(; kwargs..., callback=cb)
 end
@@ -67,10 +67,14 @@ function make_costfunction(
     reference::ADAPT.QuantumState,
     counter::Ref{Int},
 )
+    x0 = copy(ADAPT.angles(ansatz))
     return (x) -> (
         counter[] += 1;
+        x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
         ADAPT.bind!(ansatz, x);
-        ADAPT.evaluate(ansatz, observable, reference)
+        f = ADAPT.evaluate(ansatz, observable, reference);
+        ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
+        f
     )
 end
 
@@ -96,16 +100,16 @@ function make_gradfunction(
     reference::ADAPT.QuantumState,
     counter::Ref{Int},
 )
-    g! = make_gradfunction(ansatz, observable, reference, counter)
+    g! = make_gradfunction!(ansatz, observable, reference, counter)
     return (x) -> (
-        ∇f = Vector{ADAPT.energy_type(observable)}(undef, length(x));
+        ∇f = Vector{ADAPT.typeof_energy(observable)}(undef, length(x));
         g!(∇f, x);
         ∇f
     )
 end
 
-function make_data(state, f_gounter, g_counter)
-    return Dict(
+function make_data(state, f_counter, g_counter)
+    return ADAPT.Data(
         :energy => state.value,
         :g_norm => state.g_norm,
         :elapsed_iterations => state.iteration,
@@ -125,7 +129,7 @@ function make_callback(
     f_counter::Ref{Int},
     g_counter::Ref{Int},
 )
-    return (state) -> (
+    state_callback = (state) -> (
         data = make_data(state, f_counter, g_counter);
         stop = false;
         for callback in callbacks;
@@ -135,7 +139,9 @@ function make_callback(
         stop || ADAPT.is_optimized(ansatz)
     )
 
-    return store_trace ? (history) -> state_callback(last(history)) : state_callback
+    history_callback = (history) -> state_callback(last(history))
+
+    return VQE.options.store_trace ? history_callback : state_callback
 end
 
 function ADAPT.optimize!(
@@ -155,13 +161,40 @@ function ADAPT.optimize!(
 
     result = Optim.optimize(
         make_costfunction(ansatz, observable, reference, f_counter),
-        make_gradfunction!(ansatz, observable, reference, g_gounter),
-        vqe.method,
+        make_gradfunction!(ansatz, observable, reference, g_counter),
+        ADAPT.angles(ansatz),
+        VQE.method,
         options_with_callback(VQE.options, callback),
     )
     #= TODO: this interface looks different for different optimizers, no?
 
     You'll have to add a switch on VQE.method <: Optim.FirstOrder..., etc.
+
+    TODO: Also you should allow for first order methods sans g!,
+        which defaults to finite difference.
+
+        (Maybe. See note below for an argument to restrict this protocol
+            to first-order analytic gradient.)
+    =#
+
+    # UPDATE ANSATZ PARAMETERS
+    x = Optim.minimizer(result)
+    ADAPT.bind!(ansatz, x)
+    #= TODO: I am presently relying on a call to the gradient function
+        to update parameters at each iteration.
+    This only works for first-order methods with analytic gradient.
+
+    Zeroth order methods and finite-differences will never call the gradient function,
+        and second-order methods (with finite difference for the Hessian)
+        will call it for perturbed points that shouldn't actually update parameters!
+    The latter problem is why I don't want to let function calls mutate the ansatz
+        (even without finite difference, they get called a bunch for linesearches).
+
+    We must EITHER come up with a clever solution in the callback
+        (which for some inconceivable reason
+            is not actually given the `x` for the current iteration...)
+        OR formally restrict this `OptimizationProtocol`
+            to first-order methods with analytic gradient.
     =#
 
     # IF A CALLBACK DECLARED OPTIMIZATION TO BE SUCCESSFUL, LET THE OPTIMIZER KNOW

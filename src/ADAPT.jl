@@ -14,9 +14,9 @@ module ADAPT
 
     # Define types to represent quantum objects (operators and states).
     include("core/__quantum_objects.jl")
-    export AbstractGenerator, Generator, GeneratorList
-    export AbstractObservable, Observable, typeof_energy
-    export AbstractQuantumState, QuantumState
+    export Generator, GeneratorList
+    export Observable, typeof_energy
+    export QuantumState
 
     # Define the type for the ADAPT state (which I call an "ansatz").
     include("core/__ansatz.jl")
@@ -24,7 +24,7 @@ module ADAPT
     export typeof_parameter
     export is_optimized!, set_optimized!
     export is_converged, set_converged!
-    export update_parameters!
+    export angles, bind!
 
     # Define functions for quantum operations (evolution and expectation).
     include("core/__quantum_functions.jl")
@@ -41,6 +41,8 @@ module ADAPT
     export run!
 
     module Basics
+        # Stuff that should be in PauliOperators.jl
+        module MyPauliOperators; include("base/__paulioperators.jl"); end
         # Implementing generators and observables with our group's `PauliOperators.jl`
         include("base/pauli_plugin.jl")
 
@@ -63,10 +65,23 @@ module ADAPT
         # A suite of callbacks for tracing, printing, and stopping
         include("base/Callbacks.jl")
         export Callbacks
+
+        # A suite of common operators, especially useful for constructing operator pools.
+        include("base/Operators.jl")
+        export Operators
     end
     using .Basics
     export Ansatz
     export VANILLA
     export OptimOptimizer, OPTIMIZATION_FREE
     export Callbacks
+    export Operators
 end
+
+#=
+
+TODO:
+- Some pools. Grab from Diksha's code.
+- Lie rank calculation, in pauli-dedicated code.
+
+=#

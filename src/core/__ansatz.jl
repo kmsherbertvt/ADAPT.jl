@@ -89,10 +89,10 @@ Please see individual method documentation for details.
 """
 abstract type AbstractAnsatz{F<:Parameter,G<:Generator} <: AbstractVector{Pair{G,F}} end
 
-__get__generators(::AbstractAnsatz{F,G}) where {F,G} = NotImplementedError()
-__get__parameters(::AbstractAnsatz{F,G}) where {F,G} = NotImplementedError()
-__get__optimized(::AbstractAnsatz)::Ref{Bool} = NotImplementedError()
-__get__converged(::AbstractAnsatz)::Ref{Bool} = NotImplementedError()
+__get__generators(::AbstractAnsatz) = NotImplementedError()
+__get__parameters(::AbstractAnsatz) = NotImplementedError()
+__get__optimized(::AbstractAnsatz) = NotImplementedError()
+__get__converged(::AbstractAnsatz) = NotImplementedError()
 
 
 ##########################################################################################
@@ -172,6 +172,14 @@ Flag the sequence of generators in this ansatz as optimal.
 
 """
 set_converged!(ansatz::AbstractAnsatz, flag::Bool) = __get__converged(ansatz)[] = flag
+
+"""
+    angles(::AbstractAnsatz)
+
+Fetch all parameters in the ansatz as a vector.
+
+"""
+angles(ansatz::AbstractAnsatz) = __get__parameters(ansatz)
 
 """
     bind!(::AbstractAnsatz, ::ParameterList)

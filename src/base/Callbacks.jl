@@ -1,4 +1,5 @@
 """
+    Callbacks
 
 A suite of basic callbacks for essential functionality.
 
@@ -91,6 +92,10 @@ Protocols which add multiple generators in a single adaptation
 """
 module Callbacks
     import ..ADAPT
+    import ..ADAPT: AbstractCallback
+    import ..ADAPT: Data, AbstractAnsatz, Trace
+    import ..ADAPT: AdaptProtocol, OptimizationProtocol
+    import ..ADAPT: GeneratorList, Observable, QuantumState
 
     """
         Tracer(keys::Symbol...)
@@ -131,35 +136,35 @@ module Callbacks
         with every single ADAPT run you ever do.
 
     """
-    struct Tracer <: ADAPT.AbstractCallback
+    struct Tracer <: AbstractCallback
         keys::Vector{Symbol}
     end
 
-    Tracer(keys::Symbol...) = Tracer(keys)
+    Tracer(keys::Symbol...) = Tracer(collect(keys))
 
     function (tracer::Tracer)(
-        data::ADAPT.Data, ::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-        ::ADAPT.AdaptProtocol, ::Any...
+        data::Data, ::AbstractAnsatz, trace::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         iterations = get(trace, :iteration, Int[])
         adaptations = get!(trace, :adaptation, Int[])
         push!( adaptations, length(iterations) )
         for key in tracer.keys
-            key ∉ data && continue
+            key ∉ keys(data) && continue
             push!( get!(trace, key, Any[]), data[key] )
         end
         return false
     end
 
     function (tracer::Tracer)(
-        data::ADAPT.Data, ::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-        ::ADAPT.OptimizationProtocol, ::Any...
+        data::Data, ::AbstractAnsatz, trace::Trace,
+        ::OptimizationProtocol, ::Observable, ::QuantumState,
     )
         iterations = get!(trace, :iteration, Int[])
         this_iteration = isempty(iterations) ? 1 : 1+last(iterations)
         push!( iterations, this_iteration )
         for key in tracer.keys
-            key ∉ data && continue
+            key ∉ keys(data) && continue
             push!( get!(trace, key, Any[]), data[key] )
         end
         return false
@@ -191,11 +196,11 @@ module Callbacks
         But remember the callback is called *before* the parameter is added!)
 
     """
-    struct ParameterTracer <: ADAPT.AbstractCallback end
+    struct ParameterTracer <: AbstractCallback end
 
     function (tracer::ParameterTracer)(
-        ::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-        ::ADAPT.OptimizationProtocol, ::Any...
+        ::Data, ansatz::AbstractAnsatz, trace::Trace,
+        ::OptimizationProtocol, ::Observable, ::QuantumState,
     )
         F = typeof_parameter(ansatz)
         matrix = get(trace, :parameters, Matrix{F}(undef, 0, 0))
@@ -208,7 +213,7 @@ module Callbacks
         end
 
         # APPEND THE CURRENT PARAMETERS
-        matrix = vcat(matrix, ADAPT.__get__parameters(ansatz))
+        matrix = vcat(matrix, ADAPT.angles(ansatz))
         trace[:parameters] = matrix
 
         return false
@@ -243,22 +248,23 @@ module Callbacks
     Otherwise, they are skipped.
 
     """
-    struct Printer <: ADAPT.AbstractCallback
+    struct Printer <: AbstractCallback
         io::IO
         keys::Vector{Symbol}
     end
 
-    Printer(io::IO, keys::Symbol...) = Printer(io, keys)
-    Printer(keys::Symbol...) = Printer(stdout, keys)
+    Printer(io::IO, keys::Symbol...) = Printer(io, collect(keys))
+    Printer(keys::Symbol...) = Printer(stdout, collect(keys))
 
     function (printer::Printer)(
-        data::ADAPT.Data, ::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-        ::ADAPT.AdaptProtocol, ::Any...
+        data::Data, ::AbstractAnsatz, trace::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
-        if :adaptation in trace
+        if :adaptation in keys(trace)
             println(printer.io, "--- Adaptation #$(length(trace[:adaptation])) ---")
         end
         for key in printer.keys
+            key ∉ keys(data) && continue
             println(printer.io, "$(string(key)): $(data[key])")
         end
         println(printer.io)
@@ -266,18 +272,30 @@ module Callbacks
     end
 
     function (printer::Printer)(
-        data::ADAPT.Data, ::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-        ::ADAPT.OptimizationProtocol, ::Any...
+        data::Data, ::AbstractAnsatz, trace::Trace,
+        ::OptimizationProtocol, ::Observable, ::QuantumState,
     )
-        if :iteration in trace
+        if :iteration in keys(trace)
             println(printer.io, ": Iteration #$(length(trace[:iteration])) :")
         end
         for key in printer.keys
+            key ∉ keys(data) && continue
             println(printer.io, "$(string(key)): $(data[key])")
         end
         println(printer.io)
         return false
     end
+
+
+    #= TODO: A specialized energy printer,
+        which lets you receive updates at adaptations rather than iterations.
+        It would need to either inspect the trace or just do the calculation.
+        The latter is potentially expensive for a UI feature,
+            but the former is ill-defined at the first adaptation (before any optimization)
+            even though the energy is well-defined.
+        I guess we could actually just use the trace IF IT IS AVAILABLE,
+            and otherwise calculate it?
+    =#
 
 
     """
@@ -292,7 +310,7 @@ module Callbacks
     - `ncol`: number of parameters to print in one line, before starting another
 
     """
-    struct ParameterPrinter <: ADAPT.AbstractCallback
+    struct ParameterPrinter <: AbstractCallback
         io::IO
         adapt::Bool
         optimize::Bool
@@ -306,7 +324,7 @@ module Callbacks
         ncol = 8,
     ) = ParameterPrinter(io, adapt, optimize, ncol)
 
-    function print_parameters(printer::ParameterPrinter, ansatz::ADAPT.AbstractAnsatz)
+    function print_parameters(printer::ParameterPrinter, ansatz::AbstractAnsatz)
         println(printer.io, "*** Parameters ***")
         #= TODO: Explicit tabulation with printf =#
         for i in eachindex(ansatz)
@@ -318,16 +336,16 @@ module Callbacks
     end
 
     function (printer::ParameterPrinter)(
-        ::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, ::ADAPT.Trace,
-        ::ADAPT.AdaptProtocol, ::Any...
+        ::Data, ansatz::AbstractAnsatz, ::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         printer.adapt && print_parameters(printer, ansatz)
         return false
     end
 
     function (printer::ParameterPrinter)(
-        ::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, ::ADAPT.Trace,
-        ::ADAPT.OptimizationProtocol, ::Any...
+        ::Data, ansatz::AbstractAnsatz, ::Trace,
+        ::OptimizationProtocol, ::Observable, ::QuantumState,
     )
         printer.optimize && print_parameters(printer, ansatz)
         return false
@@ -346,13 +364,13 @@ module Callbacks
     - `n`: the minimum number of parameters required for convergence
 
     """
-    struct ParameterStopper <: ADAPT.AbstractCallback
+    struct ParameterStopper <: AbstractCallback
         n::Int
     end
 
     function (stopper::ParameterStopper)(
-        ::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, ::ADAPT.Trace,
-        ::ADAPT.AdaptProtocol, ::Any...
+        ::Data, ansatz::AbstractAnsatz, ::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         if length(ansatz) == stopper.n
             ADAPT.set_converged!(ansatz, true)
@@ -373,13 +391,13 @@ module Callbacks
     - `threshold`: the maximum score
 
     """
-    struct ScoreStopper{F<:ADAPT.Score} <: ADAPT.AbstractCallback
+    struct ScoreStopper{F<:ADAPT.Score} <: AbstractCallback
         threshold::F
     end
 
     function (stopper::ScoreStopper)(
-        data::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, ::ADAPT.Trace,
-        ::ADAPT.AdaptProtocol, ::Any...
+        data::Data, ansatz::AbstractAnsatz, ::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         if maximum(abs.(data[:scores])) < stopper.threshold
             ADAPT.set_converged!(ansatz, true)
@@ -406,14 +424,14 @@ module Callbacks
             before at least `n` adaptations have occurred.
 
     """
-    struct SlowStopper{F<:ADAPT.Energy} <: ADAPT.AbstractCallback
+    struct SlowStopper{F<:ADAPT.Energy} <: AbstractCallback
         threshold::F
         n::Int
     end
 
     function (stopper::SlowStopper)(
-        ::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-        ::ADAPT.AdaptProtocol, ::Any...
+        ::Data, ansatz::AbstractAnsatz, trace::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         adaptations = trace[:adaptation]
         length(adaptations) < stopper.n && return false
@@ -444,14 +462,14 @@ module Callbacks
     - `floor`: the target value
 
     """
-    struct FloorStopper{F<:ADAPT.Energy} <: ADAPT.AbstractCallback
+    struct FloorStopper{F<:ADAPT.Energy} <: AbstractCallback
         threshold::F
         floor::F
     end
 
-    function (stopper::ScoreStopper)(
-        ::ADAPT.Data, ::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-        ::ADAPT.AdaptProtocol, ::Any...
+    function (stopper::FloorStopper)(
+        ::Data, ::AbstractAnsatz, trace::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         last_energy = last(trace[:energy])
         if abs(last_energy - stopper.floor) < stopper.threshold

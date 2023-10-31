@@ -15,63 +15,6 @@ struct VanillaADAPT <: ADAPT.AdaptProtocol end
 VANILLA = VanillaADAPT()
 
 ADAPT.typeof_score(::VanillaADAPT) = Float64
-#= NOTE: Strict typing is consequent of strict typing in the PauliOperators package. =#
-
-"""
-    measure_commutator(
-        A::AbstractPauli,
-        B::AbstractPauli,
-        Ψ::Union{SparseKetBasis,AbstractVector},
-    )
-
-Calculate the expectation value of the commutator, ie. ⟨Ψ|[A,B]|Ψ⟩.
-
-TODO: There *could* be a place for this in PauliOperators,
-        but it would need to be carefully fleshed out type by type.
-    A and B needn't be Hermitian in general (though I assume they are here),
-        so my intuition is rather lacking.
-
-"""
-function measure_commutator(
-    A::AbstractPauli,
-    B::AbstractPauli,
-    Ψ::Union{SparseKetBasis,AbstractVector},
-)
-    commutator = A*B - B*A
-    #= TODO: ALLOCATIONS!
-        Diksha has a much more efficient version in the ACSE package.
-        But, it would need distinct methods for all the type combinations.
-        All my operators are fixed size,
-            so I don't know that I care about the allocations here.
-    =#
-    return expectation_value(commutator, Ψ)
-end
-
-function ADAPT.calculate_score(
-    ansatz::ADAPT.AbstractAnsatz,
-    ::VanillaADAPT,
-    generator::AbstractPauli,
-    observable::AbstractPauli,
-    reference::ADAPT.QuantumState,
-)
-    state = ADAPT.evolve_state(ansatz, reference)
-    return real(measure_commutator(generator, observable, state))
-end
-
-function ADAPT.calculate_scores(
-    ansatz::ADAPT.AbstractAnsatz,
-    ::VanillaADAPT,
-    pool::AbstractPauli,
-    observable::AbstractPauli,
-    reference::ADAPT.QuantumState,
-)
-    state = ADAPT.evolve_state(ansatz, reference)
-    scores = Vector{typeof_score(ADAPT)}(undef, length(pool))
-    for i in eachindex(pool)
-        scores[i] = real(measure_commutator(pool[i], observable, state))
-    end
-    return scores
-end
 
 function ADAPT.adapt!(
     ansatz::ADAPT.AbstractAnsatz,
@@ -86,21 +29,23 @@ function ADAPT.adapt!(
     scores = ADAPT.calculate_scores(ansatz, vanilla, pool, observable, reference)
 
     # CHECK FOR CONVERGENCE
-    ε = eps(typeof_score(vanilla))
-    if any(score -> abs(score) ≥ ε, scores)
+    ε = eps(ADAPT.typeof_score(vanilla))
+    if all(score -> abs(score) < ε, scores)
         ADAPT.set_converged!(ansatz, true)
         return false
     end
 
     # MAKE SELECTION
     selected_index = argmax(scores)
-    selected_generator = pool[pool_index]
-    selected_parameter = zero(typeof_parameter(ansatz))
+    selected_score = scores[selected_index]
+    selected_generator = pool[selected_index]
+    selected_parameter = zero(ADAPT.typeof_parameter(ansatz))
 
     # DEFER TO CALLBACKS
-    data = Data(
+    data = ADAPT.Data(
         :scores => scores,
         :selected_index => selected_index,
+        :selected_score => selected_score,
         :selected_generator => selected_generator,
         :selected_parameter => selected_parameter,
     )

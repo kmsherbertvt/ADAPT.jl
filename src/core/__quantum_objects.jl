@@ -2,22 +2,27 @@
     Names not defined in this file or in base Julia can be found there.
 =#
 
-import PauliOperators: AbstractPauli
-import PauliOperators: SparseKetBasis
-
-"""
-    AbstractGenerator
-
-An abstract type included in the `Generator` Union,
-    so that users may implement their own without having to modify the package.
-
-"""
-abstract type AbstractGenerator end
+import PauliOperators
 
 """
     Generator
 
 The Union of any type that could be used as a pool operator.
+
+# Implemented Types
+
+Any type at all can be used as a generator
+  if there is a compatible implementation
+  of the methods listed in the `Implementation` section.
+
+The following types have implementations fleshed out in this library already:
+- `PauliOperators.AbstractPauli`: A single Pauli word
+- `PauliOperators.PauliSum`: A Hermitian operator decomposed into the Pauli basis
+- `PauliOperators.ScaledPauliVector`: Same but with a different internal data structure
+
+  For each of the above,
+      the generator `G` generates the unitary `exp(-iθG)`.
+  Hermiticity in `G` is not enforced, so be careful when constructing your pool operators.
 
 # Implementation
 
@@ -51,8 +56,10 @@ There must be a compatible implementation for each of:
 
 """
 Generator = Union{
-    AbstractGenerator,
-    AbstractPauli,
+    PauliOperators.AbstractPauli,
+    PauliOperators.PauliSum,
+    PauliOperators.ScaledPauliVector,
+    Any,
 }
 
 """
@@ -64,14 +71,6 @@ Semantic alias for a vector of generators.
 GeneratorList = AbstractVector{<:Generator}
 
 
-"""
-    AbstractObservable
-
-An abstract type included in the `Observable` Union,
-    so that users may implement their own without having to modify the package.
-
-"""
-abstract type AbstractObservable end
 
 """
     Observable
@@ -80,6 +79,20 @@ The Union of any type that could define a cost function.
 
 The type is so named because the typical cost-function is the expecation value
     of a Hermitian operator, aka a quantum observable.
+
+# Implemented Types
+
+Any type at all can be used as a generator
+  if there is a compatible implementation
+  of the methods listed in the `Implementation` section.
+
+The following types have implementations fleshed out in this library already:
+- `PauliOperators.AbstractPauli`: A single Pauli word
+- `PauliOperators.PauliSum`: A Hermitian operator decomposed into the Pauli basis
+- `PauliOperators.ScaledPauliVector`: Same but with a different internal data structure
+
+  For each of the above,
+      the evaluation of `H` with respect to a quantum state `|Ψ⟩` is `⟨Ψ|H|Ψ⟩`.
 
 # Implementation
 
@@ -131,8 +144,10 @@ In addition, there must be a compatible implementation for each of:
 
 """
 Observable = Union{
-    AbstractObservable,
-    AbstractPauli,
+    PauliOperators.AbstractPauli,
+    PauliOperators.PauliSum,
+    PauliOperators.ScaledPauliVector,
+    Any,
 }
 
 """
@@ -151,19 +166,23 @@ Usually a sub-type of `AbstractFloat`, and probably just about always `Float64`.
 typeof_energy(::Observable) = NotImplementedError()
 
 
-"""
-    AbstractQuantumState
-
-An abstract type included in the `QuantumState` Union,
-    so that users may implement their own without having to modify the package.
-
-"""
-abstract type AbstractQuantumState end
 
 """
     QuantumState
 
 The Union of any type that could define a quantum state.
+
+# Implemented Types
+
+Any type at all can be used as a generator
+  if there is a compatible implementation
+  of the methods listed in the `Implementation` section.
+
+The following types have implementations fleshed out in this library already:
+- `Vector{<:Complex}`: A dense statevector in the computational basis
+- `PauliOperators.SparseKetBasis`:
+
+  A dict mapping individual kets (`PauliOperators.KetBitString`) to their coefficients.
 
 # Implementation
 
@@ -218,7 +237,7 @@ There must be a compatible implementation for each of:
 
 """
 QuantumState = Union{
-    AbstractQuantumState,
-    SparseKetBasis,
+    PauliOperators.SparseKetBasis,
     Vector{<:Complex},
+    Any,
 }

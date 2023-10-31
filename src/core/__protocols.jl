@@ -516,7 +516,7 @@ function run!(
 )
     is_converged(ansatz) && return true
 
-    optimize!(ansatz, trace, VQE, observable, reference, callbacks)
+    is_optimized(ansatz) || optimize!(ansatz,trace, VQE, observable,reference, callbacks)
     is_optimized(ansatz) || return false
 
     adapted = adapt!(ansatz, trace, ADAPT, pool, observable, reference, callbacks)

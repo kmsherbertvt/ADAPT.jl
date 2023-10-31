@@ -28,13 +28,13 @@ struct Ansatz{F,G} <: ADAPT.AbstractAnsatz{F,G}
     converged::Ref{Bool}
 end
 
-__get__generators(ansatz::Ansatz) = ansatz.generators
-__get__parameters(ansatz::Ansatz) = ansatz.parameters
-__get__optimized(ansatz::Ansatz) = ansatz.optimized
-__get__converged(ansatz::Ansatz) = ansatz.converged
+ADAPT.__get__generators(ansatz::Ansatz) = ansatz.generators
+ADAPT.__get__parameters(ansatz::Ansatz) = ansatz.parameters
+ADAPT.__get__optimized(ansatz::Ansatz) = ansatz.optimized
+ADAPT.__get__converged(ansatz::Ansatz) = ansatz.converged
 
 """
-    Ansatz(::F, ::G)
+    Ansatz(F, G)
 
 Convenience constructor for initializing an empty ansatz.
 
@@ -48,4 +48,4 @@ But please note, the ansatz is always initialized as empty,
     even though you've passed a list of generators in the constructor!
 
 """
-Ansatz(::F,::G) where {F,G} = Ansatz(eltype(F)[], eltype(G)[], Ref(true), Ref(false))
+Ansatz(F, G) = Ansatz(eltype(G)[], eltype(F)[], Ref(true), Ref(false))
