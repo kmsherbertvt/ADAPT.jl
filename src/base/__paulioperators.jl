@@ -8,6 +8,14 @@ AnyPauli = Union{AbstractPauli, PauliSum, ScaledPauliVector}
 
 import LinearAlgebra
 
+#=
+TODO: Mutating functions (ie. those ending in !) should return the mutated object.
+This is a matter of style and conveniente to allow chaining,
+    eg. `clip!(sum!(paulisum, pauli))`
+    but I've also just discovered it is necessary for correct functionality
+    of things like `reduce(sum!, paulis; init=paulisum)`.
+=#
+
 """
     Sigh... this seems to not be defined for any AbstractPauli.
     Best do so. For now all I need is FixedPhasePauli, to get the durned thing to run.
