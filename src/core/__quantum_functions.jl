@@ -155,3 +155,61 @@ partial(
     observable::Observable,
     reference::QuantumState,
 ) = NotImplementedError()
+
+"""
+    gradient(
+        ansatz::AbstractAnsatz,
+        observable::Observable,
+        reference::QuantumState,
+    )
+
+Construct a vector of partial derivatives with respect to each parameter in the ansatz.
+
+# Parameters
+- `ansatz`: the ADAPT state
+- `H`: the object defining the cost-function
+- `ψ0`: an initial quantum state which the `ansatz` operates on
+
+# Returns
+- a vector of type `typeof_energy(observable)`.
+
+"""
+function gradient(
+    ansatz::AbstractAnsatz,
+    observable::Observable,
+    reference::QuantumState,
+)
+    F = typeof_energy(observable)
+    result = Vector{F}(undef, length(ansatz))
+    result = gradient!(result, ansatz, observable, reference)
+    return result
+end
+
+"""
+    gradient!(
+        result::AbstractVector,
+        ansatz::AbstractAnsatz,
+        observable::Observable,
+        reference::QuantumState,
+    )
+
+Fill a vector of partial derivatives with respect to each parameter in the ansatz.
+
+# Parameters
+- `result`: vector which will contain the gradient after calling this function
+- `ansatz`: the ADAPT state
+- `H`: the object defining the cost-function
+- `ψ0`: an initial quantum state which the `ansatz` operates on
+
+"""
+function gradient!(
+    result::AbstractVector,
+    ansatz::AbstractAnsatz,
+    observable::Observable,
+    reference::QuantumState,
+)
+    for i in eachindex(ansatz)
+        result[i] = ADAPT.partial(i, ansatz, observable, reference)
+    end
+    return result
+end
