@@ -7,7 +7,9 @@ import .MyPauliOperators: ScaledPauliVector, PauliSum
 PauliOperators = MyPauliOperators
 # TODO: Replace `MyPauliOperators` with `PauliOperators`
 
-import LinearAlgebra: mul!
+import LinearAlgebra: mul!, dot
+
+# TODO: Usually when we take `AbstractAnsatz` we mean `AbstractAnsatz{F,G<:AnyPauli}`.
 
 AnyPauli = Union{Pauli, ScaledPauli, PauliSum, ScaledPauliVector}
 #= NOTE: ANY Pauli is a little strong.
@@ -194,7 +196,25 @@ function __make__costate(G::ScaledPauliVector, x, Ψ::AbstractVector)
     return costate
 end
 
+function ADAPT.gradient!(
+    result::AbstractVector,
+    ansatz::ADAPT.AbstractAnsatz,
+    observable::AnyPauli,
+    reference::ADAPT.QuantumState,
+)
+    ψ = ADAPT.evolve_state(ansatz, reference)   # FULLY EVOLVED ANSATZ |ψ⟩
+    λ = observable * ψ                          # CALCULATE |λ⟩ = H |ψ⟩
 
+    for i in reverse(eachindex(ansatz))
+        G, θ = ansatz[i]
+        ADAPT.evolve_state!(G', -θ, ψ)          # UNEVOLVE BRA
+        σ = __make__costate(G, θ, ψ)            # CALCULATE |σ⟩ = exp(-iθG) (-iG) |ψ⟩
+        result[i] = 2 * real(dot(σ, λ))         # CALCULATE GRADIENT ⟨λ|σ⟩ + h.t.
+        ADAPT.evolve_state!(G', -θ, λ)          # UNEVOLVE KET
+    end
+
+    return result
+end
 
 ##########################################################################################
 #= Default scoring. Variant ADAPT protocols will probably want to override this. =#

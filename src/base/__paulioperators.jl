@@ -44,6 +44,29 @@ function Base.zero(::SparseKetBasis{N,T}) where {N,T}
     return SparseKetBasis(N, T=T)
 end
 
+"""
+TODO: Consult with Nick before adding this definition to PauliOperators.
+
+I hesitate for two reasons:
+
+1. It is not "lazy". It allocates a new array.
+    Not unprecedented but not ideal.
+    Not sure the proper way to make it lazy.
+
+2. Column vector adjoint should properly be a row vector, rather than reversed.
+    Can't think of why we'd ever use ScaledPauliVector as a column vector,
+        but its data type is so, properly.
+
+But, this definition achieves desired polymorphism in evolving by ScaledPauliVector,
+    so if Nick okays it, I'm happy with it.
+The alternative is a dedicated `unevolve` function with a tedious special case
+    for unevolving ansatze whose generators are ScaledPauliVector...
+
+"""
+function Base.adjoint(ps::ScaledPauliVector)
+    return [p' for p in reverse(ps)]
+end
+
 """ Of course this one is missing... ^_^
 Note strict typing in out, because Paulis themselves are strictly typed.
 """
