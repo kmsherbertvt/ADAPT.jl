@@ -202,7 +202,7 @@ module Callbacks
         ::Data, ansatz::AbstractAnsatz, trace::Trace,
         ::OptimizationProtocol, ::Observable, ::QuantumState,
     )
-        F = typeof_parameter(ansatz)
+        F = ADAPT.typeof_parameter(ansatz)
         matrix = get(trace, :parameters, Matrix{F}(undef, 0, 0))
 
         # PAD THE EXISTING MATRIX WITH ZEROS TO MATCH THE SIZE OF THE CURRENT ANSATZ
