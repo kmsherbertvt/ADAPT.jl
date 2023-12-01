@@ -65,11 +65,9 @@ function make_costfunction(
     ansatz::ADAPT.AbstractAnsatz,
     observable::ADAPT.Observable,
     reference::ADAPT.QuantumState,
-    counter::Ref{Int},
 )
     x0 = copy(ADAPT.angles(ansatz))
     return (x) -> (
-        counter[] += 1;
         x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
         ADAPT.bind!(ansatz, x);
         f = ADAPT.evaluate(ansatz, observable, reference);
@@ -82,14 +80,13 @@ function make_gradfunction!(
     ansatz::ADAPT.AbstractAnsatz,
     observable::ADAPT.Observable,
     reference::ADAPT.QuantumState,
-    counter::Ref{Int},
 )
+    x0 = copy(ADAPT.angles(ansatz))
     return (∇f, x) -> (
-        counter[] += 1;
+        x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
         ADAPT.bind!(ansatz, x);
-        for i in eachindex(ansatz);
-            ∇f[i] = ADAPT.partial(i, ansatz, observable, reference)
-        end;
+        ADAPT.gradient!(∇f, ansatz, observable, reference);
+        ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
         ∇f
     )
 end
@@ -100,7 +97,7 @@ function make_gradfunction(
     reference::ADAPT.QuantumState,
     counter::Ref{Int},
 )
-    g! = make_gradfunction!(ansatz, observable, reference, counter)
+    g! = make_gradfunction!(ansatz, observable, reference)
     return (x) -> (
         ∇f = Vector{ADAPT.typeof_energy(observable)}(undef, length(x));
         g!(∇f, x);
@@ -108,14 +105,14 @@ function make_gradfunction(
     )
 end
 
-function make_data(state, f_counter, g_counter)
+function make_data(iterdata, objective, state)
     return ADAPT.Data(
-        :energy => state.value,
-        :g_norm => state.g_norm,
-        :elapsed_iterations => state.iteration,
-        :elapsed_time => state.metadata["time"],
-        :elapsed_f_calls => f_counter[],
-        :elapsed_g_calls => g_counter[],
+        :energy => iterdata.value,
+        :g_norm => iterdata.g_norm,
+        :elapsed_iterations => iterdata.iteration,
+        :elapsed_time => iterdata.metadata["time"],
+        :elapsed_f_calls => only(objective.f_calls),
+        :elapsed_g_calls => only(objective.df_calls),
     )
 end
 
@@ -126,22 +123,24 @@ function make_callback(
     observable::ADAPT.Observable,
     reference::ADAPT.QuantumState,
     callbacks::ADAPT.CallbackList,
-    f_counter::Ref{Int},
-    g_counter::Ref{Int},
+    objective::Optim.OnceDifferentiable,
+    state::Optim.AbstractOptimizerState,
 )
-    state_callback = (state) -> (
-        data = make_data(state, f_counter, g_counter);
+    iterdata_callback = (iterdata) -> (
+        ADAPT.bind!(ansatz, state.x);   # TODO: Is `x` a guaranteed field of `state`?
+        data = make_data(iterdata, objective, state);
         stop = false;
         for callback in callbacks;
             stop = stop || callback(data, ansatz, trace, VQE, observable, reference);
             # As soon as `stop` is true, subsequent callbacks are short-circuited.
         end;
+        # TODO: Consider updating `state.x` so callbacks can control x. Seems dangerous...
         stop || ADAPT.is_optimized(ansatz)
     )
 
-    history_callback = (history) -> state_callback(last(history))
+    history_callback = (history) -> iterdata_callback(last(history))
 
-    return VQE.options.store_trace ? history_callback : state_callback
+    return VQE.options.store_trace ? history_callback : iterdata_callback
 end
 
 function ADAPT.optimize!(
@@ -152,50 +151,34 @@ function ADAPT.optimize!(
     reference::ADAPT.QuantumState,
     callbacks::ADAPT.CallbackList,
 )
-    f_counter = Ref(0)
-    g_counter = Ref(0)
+    # INITIALIZE OPTIMIZATION OBJECTS
+    objective = Optim.OnceDifferentiable(
+        make_costfunction(ansatz, observable, reference),
+        make_gradfunction!(ansatz, observable, reference),
+        copy(ADAPT.angles(ansatz)),     # NOTE: This copy is pry redundant. But safer.
+    )
+    # TODO: Generalize interface for 0th/2nd order methods, and 1st w/finite difference.
+
+    state = Optim.initial_state(
+        VQE.method,
+        VQE.options,                    # NOTE: Pretty sure this argument is inert.
+        objective,
+        copy(ADAPT.angles(ansatz)),
+    )
+
     callback = make_callback(
         ansatz, trace, VQE, observable, reference, callbacks,
-        f_counter, g_counter,
+        objective, state,
     )
 
+    # RUN OPTIMIZATION
     result = Optim.optimize(
-        make_costfunction(ansatz, observable, reference, f_counter),
-        make_gradfunction!(ansatz, observable, reference, g_counter),
-        ADAPT.angles(ansatz),
+        objective,
+        copy(ADAPT.angles(ansatz)),
         VQE.method,
         options_with_callback(VQE.options, callback),
+        state,
     )
-    #= TODO: this interface looks different for different optimizers, no?
-
-    You'll have to add a switch on VQE.method <: Optim.FirstOrder..., etc.
-
-    TODO: Also you should allow for first order methods sans g!,
-        which defaults to finite difference.
-
-        (Maybe. See note below for an argument to restrict this protocol
-            to first-order analytic gradient.)
-    =#
-
-    # UPDATE ANSATZ PARAMETERS
-    x = Optim.minimizer(result)
-    ADAPT.bind!(ansatz, x)
-    #= TODO: I am presently relying on a call to the gradient function
-        to update parameters at each iteration.
-    This only works for first-order methods with analytic gradient.
-
-    Zeroth order methods and finite-differences will never call the gradient function,
-        and second-order methods (with finite difference for the Hessian)
-        will call it for perturbed points that shouldn't actually update parameters!
-    The latter problem is why I don't want to let function calls mutate the ansatz
-        (even without finite difference, they get called a bunch for linesearches).
-
-    We must EITHER come up with a clever solution in the callback
-        (which for some inconceivable reason
-            is not actually given the `x` for the current iteration...)
-        OR formally restrict this `OptimizationProtocol`
-            to first-order methods with analytic gradient.
-    =#
 
     # IF A CALLBACK DECLARED OPTIMIZATION TO BE SUCCESSFUL, LET THE OPTIMIZER KNOW
     ADAPT.is_optimized(ansatz) && (result.x_converged = true)
