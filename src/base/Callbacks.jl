@@ -176,7 +176,7 @@ module Callbacks
 
     Add the ansatz parameters to the running trace, under the key `:parameters`.
 
-    Called for `optimize!` only.
+    Called for `adapt!` only.
 
     Each parameter is stored as a column in a matrix; each row is a different iteration.
     The existing trace is padded with columns of 0.0
@@ -200,7 +200,7 @@ module Callbacks
 
     function (tracer::ParameterTracer)(
         ::Data, ansatz::AbstractAnsatz, trace::Trace,
-        ::OptimizationProtocol, ::Observable, ::QuantumState,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         F = ADAPT.typeof_parameter(ansatz)
         matrix = get(trace, :parameters, Matrix{F}(undef, 0, 0))
@@ -213,7 +213,7 @@ module Callbacks
         end
 
         # APPEND THE CURRENT PARAMETERS
-        matrix = vcat(matrix, ADAPT.angles(ansatz))
+        matrix = vcat(matrix, transpose(ADAPT.angles(ansatz)))
         trace[:parameters] = matrix
 
         return false
