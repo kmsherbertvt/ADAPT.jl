@@ -29,7 +29,11 @@ module ADAPT
     # Define functions for quantum operations (evolution and expectation).
     include("core/__quantum_functions.jl")
     export evolve_state, evolve_state!
-    export evaluate, partial
+    export evaluate, partial, gradient, gradient!
+
+    # Define functions for dense matrix representations.
+    include("core/__matrix_functions.jl")
+    export evolve_unitary, evolve_unitary!
 
     # Define the interface for implementing distinct ADAPT and VQE protocols.
     include("core/__protocols.jl")

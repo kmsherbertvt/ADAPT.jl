@@ -29,11 +29,6 @@ end
 
 Calculate the quantum state rotating `ψ` by an amount `x` about the axis defined by `G`.
 
-# Implementation
-
-Typically, the "rotation" is the unitary operator `exp(-iθG)`,
-    but different `Generator` types could have different effects.
-
 """
 function evolve_state(
     G::Generator,

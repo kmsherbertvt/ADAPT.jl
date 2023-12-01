@@ -16,7 +16,16 @@ This is a matter of style and conveniente to allow chaining,
     of things like `reduce(sum!, paulis; init=paulisum)`.
 =#
 
-function LinearAlgebra.mul!(C::Vector{T}, A::AbstractPauli{N}, B::Vector{T}) where {T,N}
+#= TODO: Any function args with Matrix or Vector should be AbstractMatrix/Vector.
+    Case in point: they should operate perfectly well on views. >_>
+=#
+Base.:*(p::AnyPauli, in::AbstractArray) = Base.:*(p, Array(in))
+
+function LinearAlgebra.mul!(
+    C::AbstractVector{T},
+    A::AbstractPauli{N},
+    B::AbstractVector{T},
+) where {T,N}
     ndim = size(B,1)
 
     # Check dimensions

@@ -190,7 +190,3 @@ Replace all parameters in the ansatz.
 function bind!(ansatz::AbstractAnsatz{F,G}, x::AbstractVector{F}) where {F,G}
     __get__parameters(ansatz) .= x
 end
-
-#= TODO: Add `as_unitary(ansatz)` function. Accepts optional first arg float type.
-    Simply build a vector of vectors, evolving each basis vector, then reduce(hcat, ..).
-=#
