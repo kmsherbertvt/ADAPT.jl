@@ -16,23 +16,23 @@ This is a matter of style and conveniente to allow chaining,
     of things like `reduce(sum!, paulis; init=paulisum)`.
 =#
 
-"""
-    Sigh... this seems to not be defined for any AbstractPauli.
-    Best do so. For now all I need is FixedPhasePauli, to get the durned thing to run.
-    There's more, though. FixedPhasePauli * Vector ?? I'm confused. Giving up for now...
-"""
-function LinearAlgebra.mul!(C::Vector{T}, A::FixedPhasePauli{N}, B::Vector{T}) where {T,N}
+function LinearAlgebra.mul!(C::Vector{T}, A::AbstractPauli{N}, B::Vector{T}) where {T,N}
     ndim = size(B,1)
 
     # Check dimensions
     size(B) == size(C) || throw(DimensionMismatch)
     ndim == 2^N || throw(DimensionMismatch)
 
+    C .= 0
     op = A; coeff = 1
     #= @inbounds @simd =# for i in 0:ndim-1
         (phase, j) = op * KetBitString{N}(i)
         C[j.v+1] += phase * coeff * B[i+1]
     end
+end
+
+function Base.zero(::SparseKetBasis{N,T}) where {N,T}
+    return SparseKetBasis(N, T=T)
 end
 
 """ Of course this one is missing... ^_^
@@ -57,36 +57,43 @@ function PauliOperators.clip!(ψ::SparseKetBasis{N,T}; thresh=1e-16) where {N,T}
     filter!(p -> abs(p.second) > thresh, ψ)
 end
 
-function rotate!(
-    state::AbstractVector,
-    pauli::FixedPhasePauli,
-    angle::Number,
-)
+"""
+TODO: VERY SPECIFICALLY ASSERT that pauli xz=00 is to be interpreted as I,
+                                    pauli xz=10 is to be interpreted as X,
+                                    pauli xz=01 is to be interpreted as Z,
+                                and pauli xz=11 is to be interpreted as Y,
+                                despite the last usually being interpreted as iY.
+    Also clear this definition with Nick before putting it in his package...
+"""
+function cis!(state::AbstractVector, pauli::FixedPhasePauli, angle)
     sinebranch = pauli * state
-    #= TODO: Allocations! Should use `mul!(tmp, G, ψ0)` somehow... =#
-    sinebranch .*= sin(angle)
+    sinebranch .*= PauliOperators.get_phase(pauli) * im * sin(angle)
     state .*= cos(angle)
     state .+= sinebranch
 end
 
-function rotate!(
-    state::SparseKetBasis,
-    pauli::FixedPhasePauli,
-    angle::Number,
-)
+function cis!(state::SparseKetBasis, pauli::FixedPhasePauli, angle)
     sinebranch = pauli * state
-    PauliOperators.scale!(sinebranch, sin(angle))
+    PauliOperators.scale!(sinebranch, PauliOperators.get_phase(pauli) * im * sin(angle))
     PauliOperators.scale!(state, cos(angle))
     sum!(state, sinebranch)
+end
+
+function cis!(state::Union{SparseKetBasis,AbstractVector}, pauli::Pauli, angle)
+    return cis!(state, pauli.pauli, angle * PauliOperators.get_phase(pauli))
+end
+
+function cis!(state::Union{SparseKetBasis,AbstractVector}, pauli::ScaledPauli, angle)
+    return cis!(state, pauli.pauli, angle * pauli.coeff)
 end
 
 function PauliOperators.expectation_value(
     pauli::AnyPauli,
     state::Union{SparseKetBasis,AbstractVector},
 )
-    bra = pauli * state
+    covector = pauli * state
     #= TODO: Allocations! Should use `mul!(tmp, pauli, state)` somehow... =#
-    return LinearAlgebra.dot(state, bra)
+    return LinearAlgebra.dot(state, covector)
 end
 
 function braket(

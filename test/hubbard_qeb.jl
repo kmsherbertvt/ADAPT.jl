@@ -24,18 +24,10 @@ for j in i+1:2L
 end; end
 
 # CONSTRUCT A REFERENCE STATE
-#= This reference state is an anti-bonding mixture of the two anti basis states.
-    I have chosen this one for this example because it is the first one I found
-        for which the qubit excitation pool could start.
-=#
-neel1 = "0110"^(L >> 1)
-(L & 1 == 1) && (neel1 *= "01")
-ket1 = KetBitString{2L}(parse(Int128, neel1, base=2))
-neel2 = "1001"^(L >> 1)
-(L & 1 == 1) && (neel2 *= "10")
-ket2 = KetBitString{2L}(parse(Int128, neel2, base=2))
-ψ0 = SparseKetBasis{2L,ComplexF64}(ket1 => 1/√2, ket2 => -1/√2)
-# ψ0 = zeros(ComplexF64, 1<<2L); ψ0[1+ket1.v] = 1/√2; ψ0[1+ket2.v] = -1/√2
+neel = "0110"^(L >> 1)
+(L & 1 == 1) && (neel *= "01")
+ket1 = KetBitString{2L}(parse(Int128, neel, base=2))
+ψ0 = SparseKetBasis{2L,ComplexF64}(ket1 => 1)
 
 # INITIALIZE THE ANSATZ AND TRACE
 ansatz = ADAPT.Ansatz(Float64, pool)
@@ -50,7 +42,7 @@ callbacks = [
     ADAPT.Callbacks.Tracer(:energy, :selected_index, :selected_score, :scores),
     ADAPT.Callbacks.Printer(:energy, :selected_generator, :selected_score),
     ADAPT.Callbacks.ScoreStopper(1e-3),
-    ADAPT.Callbacks.ParameterStopper(1),
+    ADAPT.Callbacks.ParameterStopper(10),
 ]
 
 # RUN THE ALGORITHM

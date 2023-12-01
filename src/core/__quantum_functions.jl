@@ -21,6 +21,31 @@ function evolve_state(
 end
 
 """
+    evolve_state(
+        G::Generator,
+        θ::Parameter,
+        ψ::QuantumState,
+    )
+
+Calculate the quantum state rotating `ψ` by an amount `x` about the axis defined by `G`.
+
+# Implementation
+
+Typically, the "rotation" is the unitary operator `exp(-iθG)`,
+    but different `Generator` types could have different effects.
+
+"""
+function evolve_state(
+    G::Generator,
+    θ::Parameter,
+    Ψ::QuantumState,
+)
+    state = deepcopy(Ψ)
+    evolve_state!(G, θ, state)
+    return state
+end
+
+"""
     evolve_state!(
         ansatz::AbstractAnsatz,
         state::QuantumState,

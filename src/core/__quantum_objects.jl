@@ -16,7 +16,8 @@ Any type at all can be used as a generator
   of the methods listed in the `Implementation` section.
 
 The following types have implementations fleshed out in this library already:
-- `PauliOperators.AbstractPauli`: A single Pauli word
+- `PauliOperators.Pauli`: A single Pauli word
+- `PauliOperators.ScaledPauli`: A single Pauli word, alongside some scaling coefficient
 - `PauliOperators.PauliSum`: A Hermitian operator decomposed into the Pauli basis
 - `PauliOperators.ScaledPauliVector`: Same but with a different internal data structure
 
@@ -56,7 +57,8 @@ There must be a compatible implementation for each of:
 
 """
 Generator = Union{
-    PauliOperators.AbstractPauli,
+    PauliOperators.Pauli,
+    PauliOperators.ScaledPauli,
     PauliOperators.PauliSum,
     PauliOperators.ScaledPauliVector,
     Any,
@@ -87,7 +89,8 @@ Any type at all can be used as a generator
   of the methods listed in the `Implementation` section.
 
 The following types have implementations fleshed out in this library already:
-- `PauliOperators.AbstractPauli`: A single Pauli word
+- `PauliOperators.Pauli`: A single Pauli word
+- `PauliOperators.ScaledPauli`: A single Pauli word, alongside some scaling coefficient
 - `PauliOperators.PauliSum`: A Hermitian operator decomposed into the Pauli basis
 - `PauliOperators.ScaledPauliVector`: Same but with a different internal data structure
 
@@ -144,7 +147,8 @@ In addition, there must be a compatible implementation for each of:
 
 """
 Observable = Union{
-    PauliOperators.AbstractPauli,
+    PauliOperators.Pauli,
+    PauliOperators.ScaledPauli,
     PauliOperators.PauliSum,
     PauliOperators.ScaledPauliVector,
     Any,

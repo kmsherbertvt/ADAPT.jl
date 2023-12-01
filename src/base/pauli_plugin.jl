@@ -2,11 +2,21 @@ import ..ADAPT
 
 import .MyPauliOperators
 import .MyPauliOperators: SparseKetBasis
-import .MyPauliOperators: AbstractPauli, FixedPhasePauli, ScaledPauliVector, PauliSum
+import .MyPauliOperators: FixedPhasePauli, ScaledPauli, Pauli
+import .MyPauliOperators: ScaledPauliVector, PauliSum
 PauliOperators = MyPauliOperators
 # TODO: Replace `MyPauliOperators` with `PauliOperators`
 
-AnyPauli = Union{AbstractPauli, PauliSum, ScaledPauliVector}
+import LinearAlgebra: mul!
+
+AnyPauli = Union{Pauli, ScaledPauli, PauliSum, ScaledPauliVector}
+#= NOTE: ANY Pauli is a little strong.
+We don't actually support FixedPhasePauli in this library.
+
+(This is just because it's rather confusingly defined,
+    so I want users to be explicit and just use Pauli.
+    I bet that's what Nick intended also.)
+=#
 
 ADAPT.typeof_energy(::AnyPauli) = Float64
 #= NOTE:
@@ -21,11 +31,22 @@ ADAPT.typeof_energy(::AnyPauli) = Float64
 =#
 
 function ADAPT.evolve_state!(
-    G::FixedPhasePauli,
+    G::Pauli,
     θ::ADAPT.Parameter,
     Ψ::ADAPT.QuantumState,
 )
-    PauliOperators.rotate!(Ψ, G, θ)
+    angle = -θ * PauliOperators.get_phase(G) * PauliOperators.get_phase(G.pauli)'
+    PauliOperators.cis!(Ψ, G.pauli, angle)
+    Ψ isa SparseKetBasis && PauliOperators.clip!(Ψ)
+end
+
+function ADAPT.evolve_state!(
+    G::ScaledPauli,
+    θ::ADAPT.Parameter,
+    Ψ::ADAPT.QuantumState,
+)
+    angle = -θ * G.coeff * PauliOperators.get_phase(G.pauli)'
+    PauliOperators.cis!(Ψ, G.pauli, angle)
     Ψ isa SparseKetBasis && PauliOperators.clip!(Ψ)
 end
 
@@ -34,11 +55,8 @@ function ADAPT.evolve_state!(
     θ::ADAPT.Parameter,
     Ψ::ADAPT.QuantumState,
 )
-    for scaled in G
-        # CALCULATE COEFFICIENT, ACCOUNTING FOR IMPLICIT `i` FOR EACH Y in `G.pauli`
-        coeff = PauliOperators.get_phase(scaled.pauli) * scaled.coeff
-        # EVOLVE BY FIXED-PHASE PAULI
-        ADAPT.evolve_state!(scaled.pauli, coeff * θ, Ψ)
+    for P in G
+        ADAPT.evolve_state!(P, θ, Ψ)
     end
 end
 
@@ -104,15 +122,15 @@ function ADAPT.partial(
     state = deepcopy(reference)
 
     # PARTIAL EVOLUTION
-    for i in 1:index
+    for i in 1:index-1
         generator, parameter = ansatz[i]
         ADAPT.evolve_state!(generator, parameter, state)
     end
 
     # REFLECTION
-    generator, _ = ansatz[index]
-    costate = -im * generator * state
-    # TODO: This line here feels wrong. I'm not sure why.
+    generator, parameter = ansatz[index]
+    costate = __make__costate(generator, parameter, state)
+    ADAPT.evolve_state!(generator, parameter, state)
 
     # FINISH EVOLUTION
     for i in 1+index:length(ansatz)
@@ -123,6 +141,59 @@ function ADAPT.partial(
 
     return 2 * real(PauliOperators.braket(observable, costate, state))
 end
+
+
+"""
+    __make__costate(G, x, Ψ)
+
+Compute ∂/∂x exp(ixG) |ψ⟩.
+
+"""
+function __make__costate(G, x, Ψ)
+    costate = -im * G * Ψ
+    ADAPT.evolve_state!(G, x, costate)
+    return costate
+end
+
+"""
+    __make__costate(G::ScaledPauliVector, x, Ψ)
+
+Compute ∂/∂x exp(ixG) |ψ⟩.
+
+Default implementation just applies -iG to Ψ then evolves.
+That's fine as long as the evolution is exact.
+But evolution is not exact if `G` is a `ScaledPauliVector` containing non-commuting terms.
+In such a case, the co-state must be more complicated.
+
+"""
+function __make__costate(G::ScaledPauliVector, x, Ψ::SparseKetBasis)
+    costate = zero(Ψ)
+    for (i, P) in enumerate(G)
+        term = deepcopy(Ψ)
+        for j in 1:i-1; ADAPT.evolve_state!(G[j], x, term); end         # RIGHT EVOLUTION
+        term = -im * P * term                                           # REFLECTION
+        #= TODO: Hypothetically could implement mul! for SparseKetBasis someday? =#
+        for j in i:length(G); ADAPT.evolve_state!(G[j], x, term); end   # LEFT EVOLUTION
+        sum!(costate, term)
+    end
+    PauliOperators.clip!(costate)
+    return costate
+end
+
+function __make__costate(G::ScaledPauliVector, x, Ψ::AbstractVector)
+    costate = zero(Ψ)
+    work_l = Array{eltype(Ψ)}(undef, size(Ψ))
+    work_r = Array{eltype(Ψ)}(undef, size(Ψ))
+    for (i, P) in enumerate(G)
+        work_r .= Ψ
+        for j in 1:i-1; ADAPT.evolve_state!(G[j], x, work_r); end       # RIGHT EVOLUTION
+        mul!(work_l, P, work_r); work_l .*= -im                         # REFLECTION
+        for j in i:length(G); ADAPT.evolve_state!(G[j], x, work_l); end # LEFT EVOLUTION
+        costate .+= work_l
+    end
+    return costate
+end
+
 
 
 ##########################################################################################
