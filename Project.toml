@@ -5,6 +5,7 @@ version = "1.0.0-DEV"
 
 [deps]
 BlockDavidson = "b4c031f8-e7c9-4879-896c-063a10ff8103"
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 PauliOperators = "be646426-f34c-4536-b1d4-a45a9633e6db"

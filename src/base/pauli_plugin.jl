@@ -9,6 +9,8 @@ PauliOperators = MyPauliOperators
 
 import LinearAlgebra: mul!, dot
 
+import KrylovKit
+
 # TODO: Usually when we take `AbstractAnsatz` we mean `AbstractAnsatz{F,G<:AnyPauli}`.
 
 AnyPauli = Union{Pauli, ScaledPauli, PauliSum, ScaledPauliVector}
@@ -65,19 +67,10 @@ end
 function ADAPT.evolve_state!(
     G::PauliSum,
     θ::ADAPT.Parameter,
-    Ψ::ADAPT.QuantumState,
+    Ψ::AbstractVector,
 )
-    #= TODO: Implement this, using KrylovKit.exponentiate!
-
-    https://jutho.github.io/KrylovKit.jl/stable/man/matfun/#KrylovKit.exponentiate
-
-    This requires `x` to be "any Julia type with vector like behavior".
-    Not too sure *which* behavior is required.
-    So, there's a chance `PauliSum` will only be compatible with `AbstractVector`,
-        but that's okay.
-
-    =#
-    return NotImplementedError()
+    Ψ .= KrylovKit.exponentiate(x -> G * x, -im*θ, Ψ; ishermitian=true)[1]
+    return Ψ
 end
 
 
