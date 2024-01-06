@@ -225,13 +225,13 @@ end
 
 function ADAPT.calculate_scores(
     ansatz::ADAPT.AbstractAnsatz,
-    ::ADAPT.AdaptProtocol,
+    adapt::ADAPT.AdaptProtocol,
     pool::AnyPauli,
     observable::AnyPauli,
     reference::ADAPT.QuantumState,
 )
     state = ADAPT.evolve_state(ansatz, reference)
-    scores = Vector{typeof_score(ADAPT)}(undef, length(pool))
+    scores = Vector{typeof_score(adapt)}(undef, length(pool))
     for i in eachindex(pool)
         scores[i] = abs(PauliOperators.measure_commutator(pool[i], observable, state))
     end
