@@ -80,6 +80,11 @@ module ADAPT
     export OptimOptimizer, OPTIMIZATION_FREE
     export Callbacks
     export Operators
+
+
+    module OverlapADAPT
+        include("overlap/OverlapADAPT.jl")
+    end
 end
 
 #=

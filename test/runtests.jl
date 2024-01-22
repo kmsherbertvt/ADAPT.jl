@@ -5,4 +5,5 @@ using Test
     # TEMP: this are not proper tests. They are scripts. For now, pass if they run.
     include("hubbard_qeb.jl")
     include("check_unitary.jl")
+    include("overlap_qeb.jl")
 end

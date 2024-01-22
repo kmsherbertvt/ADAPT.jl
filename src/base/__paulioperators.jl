@@ -67,6 +67,17 @@ function Base.adjoint(ps::ScaledPauliVector)
     return [p' for p in reverse(ps)]
 end
 
+"""
+TODO: This adjoint is not strictly "lazy". But I don't think anyone will care.
+"""
+function Base.adjoint(ψ::SparseKetBasis)
+        ψ_ = zero(ψ)
+        for (ket, coeff) in ψ
+            ψ_[ket] = coeff'
+        end
+        return ψ_
+end
+
 """ Of course this one is missing... ^_^
 Note strict typing in out, because Paulis themselves are strictly typed.
 """
