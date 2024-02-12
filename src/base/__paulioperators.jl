@@ -91,13 +91,13 @@ end
 
 
 function Base.sum!(ψ1::SparseKetBasis{N,T}, ψ2::SparseKetBasis{N,T}) where {N,T}
-    for (ket, c) in ψ2
+    for (ket, c) in ψ2.coeffs
         sum!(ψ1, ket, c)
     end
 end
 
 function PauliOperators.clip!(ψ::SparseKetBasis{N,T}; thresh=1e-16) where {N,T}
-    filter!(p -> abs(p.second) > thresh, ψ)
+    filter!(p -> abs(p.second) > thresh, ψ.coeffs)
 end
 
 """

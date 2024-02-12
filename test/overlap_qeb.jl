@@ -23,7 +23,7 @@ end; end
 # CONSTRUCT AN ARBITRARY STATEVECTOR FOR TESTING PURPOSES
 import Random; Random.seed!(1111)
 weight(z) = z == 0 ? 0 : (z & 1) + weight(z>>1)
-Φ = SparseKetBasis{n,ComplexF64}()
+Φ = SparseKetBasis(n; T=ComplexF64)
 for z in 0:(1<<n)-1
     (weight(z) != k) && continue                    # ADD ONLY KETS WITH WEIGHT k
     Φ[KetBitString{n}(z)] = randn(ComplexF64)       # RANDOM COMPLEX NUMBER
@@ -36,7 +36,7 @@ overlap = ADAPT.OverlapADAPT.Infidelity(Φ)
 # CONSTRUCT A REFERENCE STATE
 ketstring = "1"^k * "0"^(n-k)
 ket = KetBitString{n}(parse(Int128, ketstring, base=2))
-ψ0 = SparseKetBasis{n,ComplexF64}(ket => 1)
+ψ0 = SparseKetBasis(n, T=ComplexF64); ψ0[ket] = 1
 
 # INITIALIZE THE ANSATZ AND TRACE
 ansatz = ADAPT.Ansatz(Float64, pool)

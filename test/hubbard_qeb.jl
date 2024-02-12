@@ -27,7 +27,7 @@ end; end
 neel = "0110"^(L >> 1)
 (L & 1 == 1) && (neel *= "01")
 ket1 = KetBitString{2L}(parse(Int128, neel, base=2))
-ψ0 = SparseKetBasis{2L,ComplexF64}(ket1 => 1)
+ψ0 = SparseKetBasis{2L,ComplexF64}(Dict(ket1 => 1))
 
 # INITIALIZE THE ANSATZ AND TRACE
 ansatz = ADAPT.Ansatz(Float64, pool)

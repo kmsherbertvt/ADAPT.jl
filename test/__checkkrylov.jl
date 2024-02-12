@@ -4,6 +4,27 @@ using PauliOperators
 using LinearAlgebra
 using KrylovKit
 
+# Yo ho, yo ho.
+# Base.getindex(k::SparseKetBasis{N,T}, i::Integer) where {N,T} = get(k.coeffs, KetBitString{N}(i-1), zero(T))
+Base.similar(k::SparseKetBasis) = zero(k)
+LinearAlgebra.rmul!(k::SparseKetBasis, c::Number) = (PauliOperators.scale!(k, c); k)
+    # TODO: scale! ought to return k already. (But KrylovKit *needs* rmul! too.)
+# TODO: Final version should constrain N type parameter to be the same for these:
+LinearAlgebra.mul!(w::SparseKetBasis, v::SparseKetBasis, α::Number) = (
+    empty!(w.coeffs);
+    for (ket, c) in v.coeffs;
+        w[ket] = α*c;
+    end;
+    w
+)
+LinearAlgebra.axpby!(α, v::SparseKetBasis, β, w::SparseKetBasis) = (
+    for (ket, c) in v.coeffs;
+        w[ket] = β*get(w, ket, 0) + α * c
+    end;
+    w
+)
+LinearAlgebra.axpy!(α, v::SparseKetBasis, w::SparseKetBasis) = LinearAlgebra.axpby!(α, v, 1, w)
+
 ##########
 #=
 - Make a PauliSum G of non-commuting ScaledPaulis.
@@ -52,9 +73,9 @@ A(x) = G * x
 @assert A(ψ_) ≈ Gψ_
 @assert exponentiate(A, -im*t, ψ_)[1] ≈ expGψ_
 
-# # TRY IT OUT FOR SPARSE KET BASES
-# @assert Vector(A(ψ)) ≈ Gψ_
-# @assert Vector(exponentiate(A, -im*t, ψ))[1] ≈ expGψ_
+# TRY IT OUT FOR SPARSE KET BASES
+@assert Vector(A(ψ)) ≈ Gψ_
+@assert Vector(exponentiate(A, -im*t, ψ)[1]) ≈ expGψ_
 # NOTE: Too bad, SparseKetBasis does not sufficiently "behave as a vector". Not worth it.
 
 # TEST THE PACKAGE'S EVOLUTION METHOD
