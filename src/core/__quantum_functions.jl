@@ -46,7 +46,7 @@ end
         state::QuantumState,
     )
 
-Apply an ansatz to the given quantum state, mutating the state.
+Apply an ansatz to the given quantum state, mutating and returning the state.
 
 By default, generators with a lower index are applied to the state earlier.
 This means that the equation for |Ψ⟩ would list out generators in reverse order.
@@ -60,7 +60,7 @@ function evolve_state!(
     for (generator, parameter) in ansatz
         evolve_state!(generator, parameter, state)
     end
-    return state # It's conventional to return the mutated object, but it's not mandatory.
+    return state
 end
 
 """
@@ -70,7 +70,8 @@ end
         ψ::QuantumState,
     )
 
-Rotate a quantum state `ψ` by an amount `x` about the axis defined by `G`, mutating `ψ`.
+Rotate a quantum state `ψ` by an amount `x` about the axis defined by `G`,
+    mutating and returning `ψ`.
 
 # Implementation
 
@@ -220,6 +221,9 @@ Fill a vector of partial derivatives with respect to each parameter in the ansat
 - `ansatz`: the ADAPT state
 - `H`: the object defining the cost-function
 - `ψ0`: an initial quantum state which the `ansatz` operates on
+
+# Returns
+- `result`
 
 """
 function gradient!(

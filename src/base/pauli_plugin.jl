@@ -42,6 +42,7 @@ function ADAPT.evolve_state!(
     angle = -θ * PauliOperators.get_phase(G) * PauliOperators.get_phase(G.pauli)'
     PauliOperators.cis!(Ψ, G.pauli, angle)
     Ψ isa SparseKetBasis && PauliOperators.clip!(Ψ)
+    return Ψ
 end
 
 function ADAPT.evolve_state!(
@@ -52,6 +53,7 @@ function ADAPT.evolve_state!(
     angle = -θ * G.coeff * PauliOperators.get_phase(G.pauli)'
     PauliOperators.cis!(Ψ, G.pauli, angle)
     Ψ isa SparseKetBasis && PauliOperators.clip!(Ψ)
+    return Ψ
 end
 
 function ADAPT.evolve_state!(
@@ -62,6 +64,7 @@ function ADAPT.evolve_state!(
     for P in G
         ADAPT.evolve_state!(P, θ, Ψ)
     end
+    return Ψ
 end
 
 function ADAPT.evolve_state!(

@@ -22,7 +22,7 @@ module ADAPT
     include("core/__ansatz.jl")
     export AbstractAnsatz
     export typeof_parameter
-    export is_optimized!, set_optimized!
+    export is_optimized, set_optimized!
     export is_converged, set_converged!
     export angles, bind!
 
@@ -43,6 +43,12 @@ module ADAPT
     export typeof_score, calculate_score, calculate_scores
     export OptimizationProtocol, optimize!
     export run!
+
+    # Define standard functions to validate user-defined types work with ADAPT.
+    include("core/__validation.jl")
+    export validate
+    export validate_runtime, validate_consistency
+    export validate_evolution, validate_evaluation, validate_gradient, validate_scores
 
     module Basics
         # Stuff that should be in PauliOperators.jl

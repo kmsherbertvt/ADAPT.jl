@@ -7,6 +7,22 @@ struct Infidelity{T<:ADAPT.QuantumState}
     Φ::T
 end
 
+"""
+    Matrix(infidelity)
+
+Convert an infidelity to a matrix.
+
+This implementation assumes:
+- The target state `infidelity.Φ` can be cast to a vector.
+- The reference state in `evaluate(infidelity, reference)` is always normalized.
+
+"""
+function Base.Matrix(infidelity::Infidelity)
+    Φ = Vector(infidelity.Φ)
+    ρ = Φ*Φ'
+    return one(ρ) - ρ
+end
+
 function ADAPT.typeof_energy(observable::Infidelity)
     return real(eltype(observable.Φ))
 end
