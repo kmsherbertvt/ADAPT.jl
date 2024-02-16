@@ -111,7 +111,10 @@ macro runtime(do_time, ex)
         @testset $(string(ex)) begin
             @test try $(esc(do_time)) ? @showtime($(esc(ex))) : $(esc(ex))
                 true
-            catch
+            catch e
+                if isa(e, ADAPT.NotImplementedError)
+                    println(stderr, "*** $(e.msg) ***")
+                end
                 false
             end
         end

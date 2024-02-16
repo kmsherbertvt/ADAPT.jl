@@ -68,10 +68,6 @@ module ADAPT
         include("base/OptimOptimizer.jl")
         export OptimOptimizer
 
-        # A minimalist's optimization protocol.
-        include("base/OptimizationFree.jl")
-        export OPTIMIZATION_FREE
-
         # A suite of callbacks for tracing, printing, and stopping
         include("base/Callbacks.jl")
         export Callbacks
@@ -87,9 +83,15 @@ module ADAPT
     export Callbacks
     export Operators
 
+    module OptimizationFreeADAPT
+        include("optimizationfree/OptimizationFree.jl")
+        export OPTIMIZATION_FREE
+    end
+
 
     module OverlapADAPT
         include("overlap/OverlapADAPT.jl")
+        export Infidelity
     end
 end
 

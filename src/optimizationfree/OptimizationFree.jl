@@ -11,7 +11,7 @@ There are no iterations, so there is no reason to callback. Contract obliged!
 struct OptimizationFree <: ADAPT.OptimizationProtocol end
 OPTIMIZATION_FREE = OptimizationFree()
 
-function optimize!(
+function ADAPT.optimize!(
     ansatz::ADAPT.AbstractAnsatz,
     trace::ADAPT.Trace,
     VQE::OptimizationFree,

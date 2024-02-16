@@ -2,6 +2,21 @@
     Names not defined in this file or in base Julia can be found there.
 =#
 
+#= TODO:
+
+Upon further reflection,
+    turning an ansatz into a matrix ONLY makes sense
+    within the context of a given representation.
+All these functions really need to dispatch on a QuantumState,
+    which defines the representation.
+Of course, it can default to Vector, which is implicilty assumed by the implementations here.
+
+Also, I don't necessarily think this should be considered a part of "core" ADAPT.
+I think it is a fine and useful thing to include in ADAPT.jl,
+    but probably as its own sub-module.
+
+=#
+
 import LinearAlgebra: I
 
 """

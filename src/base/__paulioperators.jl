@@ -149,6 +149,14 @@ function braket(
     return LinearAlgebra.dot(bra, covector)
 end
 
+function LinearAlgebra.dot(bra::SparseKetBasis, ket::AbstractVector)
+    return LinearAlgebra.dot(Vector(bra), ket)
+end
+
+function LinearAlgebra.dot(bra::AbstractVector, ket::SparseKetBasis)
+    return LinearAlgebra.dot(bra, Vector(ket))
+end
+
 #= TODO: lmul!. Probably a separate method for each Pauli type and each quantum state. =#
 
 

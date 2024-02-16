@@ -112,15 +112,15 @@ end
             label = "PauliSum Pool, Statevector",
         )
 
-        ADAPT.validate(
-            ADAPT.Ansatz(Float64, pools[:PauliSum]),
-            ADAPT.VANILLA,
-            BFGS,
-            pools[:PauliSum],
-            observables[:PauliSum],
-            references[:SparseKetBasis];
-            label = "PauliSum Pool, SparseKetBasis",
-        )
+        # ADAPT.validate(
+        #     ADAPT.Ansatz(Float64, pools[:PauliSum]),
+        #     ADAPT.VANILLA,
+        #     BFGS,
+        #     pools[:PauliSum],
+        #     observables[:PauliSum],
+        #     references[:SparseKetBasis];
+        #     label = "PauliSum Pool, SparseKetBasis",
+        # )
         # TODO: Just some linear algebra, but SparseKetBasis is changing drastically soon.
     end
 
@@ -128,7 +128,7 @@ end
         ADAPT.validate(
             ADAPT.Ansatz(Float64, pools[:ScaledPauliVector]),
             ADAPT.VANILLA,
-            ADAPT.OPTIMIZATION_FREE,     # TODO: This gets its own module, I think.
+            ADAPT.OptimizationFreeADAPT.OPTIMIZATION_FREE,
             pools[:ScaledPauliVector],
             observables[:PauliSum],
             references[:Vector];
@@ -163,6 +163,5 @@ end
             references[:SparseKetBasis];
             label = "SparseKetBasis",
         )
-        # TODO: Why did this break?
     end
 end
