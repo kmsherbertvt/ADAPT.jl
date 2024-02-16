@@ -1,3 +1,4 @@
 [deps]
-ADAPT = "cf1f529f-af3f-4d7a-b5f1-0e7d3fdd5852"
+BlockDavidson = "b4c031f8-e7c9-4879-896c-063a10ff8103"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+PauliOperators = "be646426-f34c-4536-b1d4-a45a9633e6db"
