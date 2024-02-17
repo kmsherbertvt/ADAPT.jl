@@ -9,6 +9,38 @@ Documentation for [ADAPT](https://github.com/kmsherbertvt/ADAPT.jl).
 ```@index
 ```
 
+### Core
 ```@autodocs
-Modules = [ADAPT]
+Modules = [
+    ADAPT,
+]
+```
+
+### Basics
+```@autodocs
+Modules = [
+    ADAPT.Basics,
+    ADAPT.Basics.Callbacks,
+    ADAPT.Basics.Operators,
+]
+```
+
+### Other Modules
+```@autodocs
+Modules = [
+    ADAPT.OptimizationFreeADAPT,
+    ADAPT.OverlapADAPT,
+]
+```
+
+### MyPauliOperators
+These methods should not be considered part of "ADAPT",
+    but rather, destined for the `PauliOperatrs.jl` package.
+The only reason I document them here is that
+    the doc builder is configured to throw an error
+    if any doc strings aren't included in the documentation...
+```@autodocs
+Modules = [
+    ADAPT.Basics.MyPauliOperators,
+]
 ```

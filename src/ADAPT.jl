@@ -79,7 +79,7 @@ module ADAPT
     using .Basics
     export Ansatz
     export VANILLA
-    export OptimOptimizer, OPTIMIZATION_FREE
+    export OptimOptimizer
     export Callbacks
     export Operators
 
