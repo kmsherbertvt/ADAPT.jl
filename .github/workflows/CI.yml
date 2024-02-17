@@ -54,6 +54,8 @@ jobs:
         run: |
           julia --project=docs/ -e '
             using Pkg
+            Pkg.add(url="https://github.com/nmayhall-vt/BlockDavidson.jl")
+            Pkg.add(url="https://github.com/nmayhall-vt/PauliOperators.jl")
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
       - uses: julia-actions/julia-buildpkg@v1
