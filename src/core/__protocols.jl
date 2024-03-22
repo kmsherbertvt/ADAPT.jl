@@ -120,7 +120,7 @@ A distinctive protocol for adding new parameters after optimizing an initial ans
 Sub-types must implement the following method:
 - `typeof_parameter(::AbstractAnsatz)::Type{<:Parameter}`
 
-In addition, there must be a compatible implementation for:
+In addition, new sub-types probably need to implement:
 - `calculate_score(
     ::AbstractAnsatz,
     ::AdaptProtocol,
@@ -137,6 +137,15 @@ In addition, there must be a compatible implementation for:
     ::Observable,
     ::QuantumState,
     ::CallbackList,
+  )`
+
+Finally, new sub-types might be able to provide better implementations of:
+- `calculate_scores(
+    ansatz::AbstractAnsatz,
+    ADAPT::AdaptProtocol,
+    pool::GeneratorList,
+    observable::Observable,
+    reference::QuantumState,
   )`
 
 For the most part, sub-types should be singleton objects, ie. no attributes.

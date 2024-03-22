@@ -213,11 +213,11 @@ function ADAPT.gradient!(
 end
 
 ##########################################################################################
-#= Default scoring. Variant ADAPT protocols will probably want to override this. =#
+#= Improved scoring for vanilla ADAPT. =#
 
 function ADAPT.calculate_score(
     ansatz::ADAPT.AbstractAnsatz,
-    ::ADAPT.AdaptProtocol,
+    ::ADAPT.Basics.VanillaADAPT,
     generator::AnyPauli,
     observable::AnyPauli,
     reference::ADAPT.QuantumState,
@@ -228,7 +228,7 @@ end
 
 function ADAPT.calculate_scores(
     ansatz::ADAPT.AbstractAnsatz,
-    adapt::ADAPT.AdaptProtocol,
+    adapt::ADAPT.Basics.VanillaADAPT,
     pool::AnyPauli,
     observable::AnyPauli,
     reference::ADAPT.QuantumState,

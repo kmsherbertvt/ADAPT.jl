@@ -184,6 +184,10 @@ function validate_runtime(
         @runtime v gradient(ansatz, observable, reference)
         result = zeros(typeof_energy(observable), length(ansatz))
         @runtime v gradient!(result, ansatz, observable, reference)
+
+        @runtime v make_costfunction(ansatz, observable, reference)
+        @runtime v make_gradfunction(ansatz, observable, reference)
+        @runtime v make_gradfunction!(ansatz, observable, reference)
     end
 
     v && println("Runtime from `__ansatz`:")
@@ -281,6 +285,10 @@ function validate_consistency(
         evolved = evolve_state(ansatz, reference)
         expval_evolved = evaluate(observable, evolved)
         @test expval == expval_evolved
+
+        fn = make_costfunction(ansatz, observable, reference)
+        x = angles(ansatz)
+        @test expval == fn(x)
     end
 
     @testset "VQE Gradient" begin
@@ -296,6 +304,15 @@ function validate_consistency(
                 for i in eachindex(grad)
         ]
         @test grad ≈ eachpartial
+
+        gd = make_gradfunction(ansatz, observable, reference)
+        x = angles(ansatz)
+        @test grad == gd(x)
+
+        g! = make_gradfunction!(ansatz, observable, reference)
+        gradinplace = g!(tobe_gradinplace, x)
+        @test tobe_gradinplace === gradinplace
+        @test grad == gradinplace
     end
 
     @testset "Ansatz Behavior" begin

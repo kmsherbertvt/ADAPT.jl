@@ -155,8 +155,8 @@ The partial derivative of a cost-function with respect to the i-th parameter in 
 # Parameters
 - `index`: the index of the parameter to calculate within `ansatz`
 - `ansatz`: the ADAPT state
-- `H`: the object defining the cost-function
-- `ψ0`: an initial quantum state which the `ansatz` operates on
+- `observable`: the object defining the cost-function
+- `reference`: an initial quantum state which the `ansatz` operates on
 
 # Returns
 - a number of type `typeof_energy(observable)`.
@@ -170,12 +170,14 @@ Typically, generators apply a unitary rotation,
 But, different ansatze may have a different procedure.
 
 """
-partial(
+function partial(
     index::Int,
     ansatz::AbstractAnsatz,
     observable::Observable,
     reference::QuantumState,
-) = NotImplementedError()
+)
+    return ADAPT.gradient(ansatz, observable, reference)[index]
+end
 
 """
     gradient(
@@ -232,8 +234,122 @@ function gradient!(
     observable::Observable,
     reference::QuantumState,
 )
-    for i in eachindex(ansatz)
-        result[i] = ADAPT.partial(i, ansatz, observable, reference)
-    end
+    cfd = FiniteDifferences.central_fdm(5, 1)
+    x0 = copy(ADAPT.angles(ansatz))
+    fn = make_costfunction(ansatz, observable, reference)
+    result .= FiniteDifferences.grad(cfd, fn, x0)[1]
     return result
+end
+
+
+
+"""
+    make_costfunction(
+        ansatz::ADAPT.AbstractAnsatz,
+        observable::ADAPT.Observable,
+        reference::ADAPT.QuantumState,
+    )
+
+Construct a single-parameter cost-function f(x), where x is a parameter vector.
+
+Note that calling f does *not* change the state of the ansatz
+    (although actually it does temporarily, so this function is not thread-safe).
+
+# Parameters
+- `ansatz`: the ADAPT state
+- `observable`: the object defining the cost-function
+- `reference`: an initial quantum state which the `ansatz` operates on
+
+# Returns
+- `fn` a callable function `f(x)` where `x` is a vector of angles compatible with `ansatz`
+
+"""
+function make_costfunction(
+    ansatz::ADAPT.AbstractAnsatz,
+    observable::ADAPT.Observable,
+    reference::ADAPT.QuantumState,
+)
+    x0 = copy(ADAPT.angles(ansatz))
+    return (x) -> (
+        x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
+        ADAPT.bind!(ansatz, x);
+        f = evaluate(ansatz, observable, reference);
+        ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
+        f
+    )
+end
+
+"""
+    make_gradfunction(
+        ansatz::ADAPT.AbstractAnsatz,
+        observable::ADAPT.Observable,
+        reference::ADAPT.QuantumState,
+    )
+
+Construct a single-parameter gradient function g(x), where x is a parameter vector.
+
+Note that calling g does *not* change the state of the ansatz
+    (although actually it does temporarily, so this function is not thread-safe).
+
+# Parameters
+- `ansatz`: the ADAPT state
+- `observable`: the object defining the cost-function
+- `reference`: an initial quantum state which the `ansatz` operates on
+
+# Returns
+- `gd` a callable function `gd(x)` where `x` is a vector of angles compatible with `ansatz`
+
+"""
+function make_gradfunction(
+    ansatz::ADAPT.AbstractAnsatz,
+    observable::ADAPT.Observable,
+    reference::ADAPT.QuantumState,
+)
+    g! = make_gradfunction!(ansatz, observable, reference)
+    return (x) -> (
+        ∇f = Vector{ADAPT.typeof_energy(observable)}(undef, length(x));
+        g!(∇f, x);
+        ∇f
+    )
+end
+
+"""
+    make_gradfunction!(
+        ansatz::ADAPT.AbstractAnsatz,
+        observable::ADAPT.Observable,
+        reference::ADAPT.QuantumState,
+    )
+
+Construct a mutating gradient function g!(∇f, x), where x is a parameter vector.
+
+Using this in place of `make_gradfunction` for optimization
+    will tend to significantly reduce memory allocations.
+
+Note that calling g! does *not* change the state of the ansatz
+    (although actually it does temporarily, so this function is not thread-safe).
+
+# Parameters
+- `ansatz`: the ADAPT state
+- `observable`: the object defining the cost-function
+- `reference`: an initial quantum state which the `ansatz` operates on
+
+# Returns
+- `g!` a callable function `g!(∇f,x)`
+  - `∇f` and `x` are vectors of angles compatible with `ansatz`.
+    The first argument `∇f` is used to store the result; its initial values are ignored.
+
+"""
+function make_gradfunction!(
+    ansatz::ADAPT.AbstractAnsatz,
+    observable::ADAPT.Observable,
+    reference::ADAPT.QuantumState,
+)
+    x0 = copy(ADAPT.angles(ansatz))
+    return (∇f, x) -> (
+        x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
+        ADAPT.bind!(ansatz, x);
+        gradient!(∇f, ansatz, observable, reference);
+        ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
+        ∇f
+    )
 end

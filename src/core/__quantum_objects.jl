@@ -29,30 +29,20 @@ The following types have implementations fleshed out in this library already:
 
 This list should be extended as new sub-types are implemented.
 
-There must be a compatible implementation for each of:
-
+New sub-types probably need to implement:
 - `evolve_state!(
     ::Generator,
     ::Parameter,
     ::QuantumState,
   )`
 
-- `calculate_score(
-    ::AbstractAnsatz,
-    ::AdaptProtocol,
-    ::Generator,
-    ::Observable,
-    ::QuantumState,
-  )::Score`
-
-- `adapt!(
-    ::AbstractAnsatz,
-    ::Trace,
-    ::AdaptProtocol,
-    ::GeneratorList,
-    ::Observable,
-    ::QuantumState,
-    ::CallbackList,
+In addition, new sub-types might be able to provide better implementations of:
+- `calculate_scores(
+    ansatz::AbstractAnsatz,
+    adapt::AdaptProtocol,
+    pool::GeneratorList,
+    observable::Observable,
+    reference::QuantumState,
   )`
 
 """
@@ -104,46 +94,26 @@ This list should be extended as new sub-types are implemented.
 Sub-types must implement the following method:
 - `typeof_energy(::Observable)::Type{<:Energy}`
 
-In addition, there must be a compatible implementation for each of:
-
+In addition, new sub-types probably need to implement:
 - `evaluate(
     ::Observable,
     ::QuantumState,
   )::Energy`
 
-- `partial(
-    index::Int,
+Finally, new sub-types might be able to provide better implementations of:
+- `gradient!(
     ansatz::AbstractAnsatz,
     observable::Observable,
     reference::QuantumState,
   )`
 
-- `calculate_score(
-    ::AbstractAnsatz,
-    ::AdaptProtocol,
-    ::Generator,
-    ::Observable,
-    ::QuantumState,
-  )::Score`
-
-- `adapt!(
-    ::AbstractAnsatz,
-    ::Trace,
-    ::AdaptProtocol,
-    ::GeneratorList,
-    ::Observable,
-    ::QuantumState,
-    ::CallbackList,
+- `calculate_scores(
+    ansatz::AbstractAnsatz,
+    adapt::AdaptProtocol,
+    pool::GeneratorList,
+    observable::Observable,
+    reference::QuantumState,
   )`
-
-- `optimize!(
-    ::AbstractAnsatz,
-    ::Trace,
-    ::OptimizationProtocol,
-    ::Observable,
-    ::QuantumState,
-    ::CallbackList,
-  )::Bool`
 
 """
 Observable = Union{
@@ -205,39 +175,20 @@ There must be a compatible implementation for each of:
     ::QuantumState,
   )::Energy`
 
-- `partial(
+- `gradient!(
     index::Int,
     ansatz::AbstractAnsatz,
     observable::Observable,
     reference::QuantumState,
   )`
 
-- `calculate_score(
-    ::AbstractAnsatz,
-    ::AdaptProtocol,
-    ::Generator,
-    ::Observable,
-    ::QuantumState,
-  )::Score`
-
-- `adapt!(
-    ::AbstractAnsatz,
-    ::Trace,
-    ::AdaptProtocol,
-    ::GeneratorList,
-    ::Observable,
-    ::QuantumState,
-    ::CallbackList,
+- `calculate_scores(
+    ansatz::AbstractAnsatz,
+    adapt::AdaptProtocol,
+    pool::GeneratorList,
+    observable::Observable,
+    reference::QuantumState,
   )`
-
-- `optimize!(
-    ::AbstractAnsatz,
-    ::Trace,
-    ::OptimizationProtocol,
-    ::Observable,
-    ::QuantumState,
-    ::CallbackList,
-  )::Bool`
 
 """
 QuantumState = Union{

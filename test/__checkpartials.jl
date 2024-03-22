@@ -65,5 +65,5 @@ fillgO = i -> gO[i] = ADAPT.partial(i, ansatz, H, ψ0)
 # MEASURE GRADIENT NUMERICALLY
 import FiniteDifferences
 cfd = FiniteDifferences.central_fdm(5, 1)
-costfn = ADAPT.Basics.make_costfunction(ansatz, H, ψ0)
+costfn = ADAPT.make_costfunction(ansatz, H, ψ0)
 gx = FiniteDifferences.grad(cfd, costfn, ADAPT.angles(ansatz))[1]

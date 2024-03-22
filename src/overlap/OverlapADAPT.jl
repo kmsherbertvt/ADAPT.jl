@@ -86,7 +86,7 @@ end
 
 function ADAPT.calculate_score(
     ansatz::ADAPT.AbstractAnsatz,
-    ::ADAPT.AdaptProtocol,
+    ::ADAPT.Basics.VanillaADAPT,
     generator::ADAPT.Generator,
     observable::Infidelity,
     reference::ADAPT.QuantumState,
@@ -99,7 +99,7 @@ end
 
 function ADAPT.calculate_scores(
     ansatz::ADAPT.AbstractAnsatz,
-    adapt::ADAPT.AdaptProtocol,
+    adapt::ADAPT.Basics.VanillaADAPT,
     pool::ADAPT.GeneratorList,
     observable::Infidelity,
     reference::ADAPT.QuantumState,

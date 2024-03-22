@@ -30,6 +30,7 @@ module ADAPT
     include("core/__quantum_functions.jl")
     export evolve_state, evolve_state!
     export evaluate, partial, gradient, gradient!
+    export make_costfunction, make_gradfunction, make_gradfunction!
 
     # Define functions for dense matrix representations.
     include("core/__matrix_functions.jl")
@@ -51,11 +52,6 @@ module ADAPT
     export validate_evolution, validate_evaluation, validate_gradient, validate_scores
 
     module Basics
-        # Stuff that should be in PauliOperators.jl
-        module MyPauliOperators; include("base/__paulioperators.jl"); end
-        # Implementing generators and observables with our group's `PauliOperators.jl`
-        include("base/pauli_plugin.jl")
-
         # A minimalist's ansatz. Sufficient for most applications.
         include("base/Ansatz.jl")
         export Ansatz
@@ -67,6 +63,11 @@ module ADAPT
         # Interface into any optimization method implemented by `Optim.jl`
         include("base/OptimOptimizer.jl")
         export OptimOptimizer
+
+        # Stuff that should be in PauliOperators.jl
+        module MyPauliOperators; include("base/__paulioperators.jl"); end
+        # Implementing generators and observables with our group's `PauliOperators.jl`
+        include("base/pauli_plugin.jl")
 
         # A suite of callbacks for tracing, printing, and stopping
         include("base/Callbacks.jl")

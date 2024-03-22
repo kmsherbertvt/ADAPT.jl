@@ -52,6 +52,7 @@ module Operators
         ]
     end
 
+    # TODO: Karunya says this is not the only 2-body QEB operator.
     function qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
         return (1/8) .* [
              ScaledPauli(Pauli(n; X=[i,k,l], Y=[j])),

@@ -62,3 +62,16 @@ function ADAPT.adapt!(
     ADAPT.set_optimized!(ansatz, false)
     return true
 end
+
+function ADAPT.calculate_score(
+    ansatz::ADAPT.AbstractAnsatz,
+    vanilla::VanillaADAPT,
+    generator::ADAPT.Generator,
+    observable::ADAPT.Observable,
+    reference::ADAPT.QuantumState,
+)
+    L = length(ansatz)
+    candidate = deepcopy(ansatz)
+    push!(candidate, generator => zero(ADAPT.typeof_parameter(ansatz)))
+    return abs(ADAPT.partial(L+1, candidate, observable, reference))
+end

@@ -35,7 +35,7 @@ Modules = [
 
 ### MyPauliOperators
 These methods should not be considered part of "ADAPT",
-    but rather, destined for the `PauliOperatrs.jl` package.
+    but rather, destined for the `PauliOperators.jl` package.
 The only reason I document them here is that
     the doc builder is configured to throw an error
     if any doc strings aren't included in the documentation...

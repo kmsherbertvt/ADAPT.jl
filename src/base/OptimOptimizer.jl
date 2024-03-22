@@ -61,49 +61,49 @@ function options_with_callback(options, callback)
     return Optim.Options(; kwargs..., callback=cb)
 end
 
-function make_costfunction(
-    ansatz::ADAPT.AbstractAnsatz,
-    observable::ADAPT.Observable,
-    reference::ADAPT.QuantumState,
-)
-    x0 = copy(ADAPT.angles(ansatz))
-    return (x) -> (
-        x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
-        ADAPT.bind!(ansatz, x);
-        f = ADAPT.evaluate(ansatz, observable, reference);
-        ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
-        f
-    )
-end
+# function make_costfunction(
+#     ansatz::ADAPT.AbstractAnsatz,
+#     observable::ADAPT.Observable,
+#     reference::ADAPT.QuantumState,
+# )
+#     x0 = copy(ADAPT.angles(ansatz))
+#     return (x) -> (
+#         x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
+#         ADAPT.bind!(ansatz, x);
+#         f = ADAPT.evaluate(ansatz, observable, reference);
+#         ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
+#         f
+#     )
+# end
 
-function make_gradfunction!(
-    ansatz::ADAPT.AbstractAnsatz,
-    observable::ADAPT.Observable,
-    reference::ADAPT.QuantumState,
-)
-    x0 = copy(ADAPT.angles(ansatz))
-    return (∇f, x) -> (
-        x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
-        ADAPT.bind!(ansatz, x);
-        ADAPT.gradient!(∇f, ansatz, observable, reference);
-        ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
-        ∇f
-    )
-end
+# function make_gradfunction!(
+#     ansatz::ADAPT.AbstractAnsatz,
+#     observable::ADAPT.Observable,
+#     reference::ADAPT.QuantumState,
+# )
+#     x0 = copy(ADAPT.angles(ansatz))
+#     return (∇f, x) -> (
+#         x0 .= ADAPT.angles(ansatz);         # SAVE THE ORIGINAL STATE
+#         ADAPT.bind!(ansatz, x);
+#         ADAPT.gradient!(∇f, ansatz, observable, reference);
+#         ADAPT.bind!(ansatz, x0);            # RESTORE THE ORIGINAL STATE
+#         ∇f
+#     )
+# end
 
-function make_gradfunction(
-    ansatz::ADAPT.AbstractAnsatz,
-    observable::ADAPT.Observable,
-    reference::ADAPT.QuantumState,
-    counter::Ref{Int},
-)
-    g! = make_gradfunction!(ansatz, observable, reference)
-    return (x) -> (
-        ∇f = Vector{ADAPT.typeof_energy(observable)}(undef, length(x));
-        g!(∇f, x);
-        ∇f
-    )
-end
+# function make_gradfunction(
+#     ansatz::ADAPT.AbstractAnsatz,
+#     observable::ADAPT.Observable,
+#     reference::ADAPT.QuantumState,
+#     counter::Ref{Int},
+# )
+#     g! = make_gradfunction!(ansatz, observable, reference)
+#     return (x) -> (
+#         ∇f = Vector{ADAPT.typeof_energy(observable)}(undef, length(x));
+#         g!(∇f, x);
+#         ∇f
+#     )
+# end
 
 function make_data(iterdata, objective, state)
     return ADAPT.Data(
@@ -153,8 +153,8 @@ function ADAPT.optimize!(
 )
     # INITIALIZE OPTIMIZATION OBJECTS
     objective = Optim.OnceDifferentiable(
-        make_costfunction(ansatz, observable, reference),
-        make_gradfunction!(ansatz, observable, reference),
+        ADAPT.make_costfunction(ansatz, observable, reference),
+        ADAPT.make_gradfunction!(ansatz, observable, reference),
         copy(ADAPT.angles(ansatz)),     # NOTE: This copy is pry redundant. But safer.
     )
     # TODO: Generalize interface for 0th/2nd order methods, and 1st w/finite difference.
