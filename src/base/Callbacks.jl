@@ -372,7 +372,7 @@ module Callbacks
         ::Data, ansatz::AbstractAnsatz, ::Trace,
         ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
-        if length(ansatz) == stopper.n
+        if length(ansatz) ≥ stopper.n
             ADAPT.set_converged!(ansatz, true)
         end
         return false
