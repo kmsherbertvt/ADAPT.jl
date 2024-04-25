@@ -41,6 +41,10 @@ vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
 callbacks = [
     ADAPT.Callbacks.Tracer(:energy, :selected_index, :selected_score, :scores),
     ADAPT.Callbacks.Printer(:energy, :selected_generator, :selected_score),
+    ADAPT.Callbacks.Serializer(
+        ansatz_file="dat/ansatz", trace_file="dat/trace",
+        on_adapt=true, on_iterate=true,
+    ),
     ADAPT.Callbacks.ScoreStopper(1e-3),
     ADAPT.Callbacks.ParameterStopper(10),
 ]

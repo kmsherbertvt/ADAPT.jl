@@ -91,6 +91,8 @@ Protocols which add multiple generators in a single adaptation
 
 """
 module Callbacks
+    import Serialization
+
     import ..ADAPT
     import ..ADAPT: AbstractCallback
     import ..ADAPT: Data, AbstractAnsatz, Trace
@@ -348,6 +350,63 @@ module Callbacks
         ::OptimizationProtocol, ::Observable, ::QuantumState,
     )
         printer.optimize && print_parameters(printer, ansatz)
+        return false
+    end
+
+
+
+    """
+        Serializer(; ansatz_file="", trace_file="", on_adapt=false, on_iterate=false)
+
+    Serialize the current state so that it can be resumed more easily.
+
+    Please note that robust serialization depends heavily on version control;
+        if the definition of a serialized type has changed since it was serialized,
+        it is very, very difficult to recover.
+    Thus, serialization of this nature should be considered
+        somewhat transient and unreliable.
+    It's good for restarting when your supercomputer crashes unexpectedly mid-job,
+        but not so good for long-term archival purposes.
+
+    # Parameters
+    - `ansatz_file`: file to save ansatz in ("" will skip saving ansatz)
+    - `trace_file`: file to save trace in ("" will skip saving trace)
+    - `on_adapt`: whether to serialize on adaptations
+    - `on_iterate`: whether to serialize in every optimization iteration
+
+    """
+    struct Serializer <: AbstractCallback
+        ansatz_file::String
+        trace_file::String
+        on_adapt::Bool
+        on_iterate::Bool
+    end
+
+    function Serializer(; ansatz_file="", trace_file="", on_adapt=false, on_iterate=false)
+        return Serializer(ansatz_file, trace_file, on_adapt, on_iterate)
+    end
+
+    function (serializer::Serializer)(
+        ::Data, ansatz::AbstractAnsatz, trace::Trace,
+        ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
+    )
+        s = serializer  # ALIAS FOR LINE LENGTH
+        if s.on_adapt
+            isempty(s.ansatz_file) || Serialization.serialize(s.ansatz_file, ansatz)
+            isempty(s.trace_file)  || Serialization.serialize(s.trace_file, trace)
+        end
+        return false
+    end
+
+    function (serializer::Serializer)(
+        ::Data, ansatz::AbstractAnsatz, trace::Trace,
+        ::OptimizationProtocol, ::Observable, ::QuantumState,
+    )
+        s = serializer  # ALIAS FOR LINE LENGTH
+        if s.on_iterate
+            isempty(s.ansatz_file) || Serialization.serialize(s.ansatz_file, ansatz)
+            isempty(s.trace_file)  || Serialization.serialize(s.trace_file, trace)
+        end
         return false
     end
 
