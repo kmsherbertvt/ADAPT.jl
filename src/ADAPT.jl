@@ -76,6 +76,10 @@ module ADAPT
         # A suite of common operators, especially useful for constructing operator pools.
         include("base/Operators.jl")
         export Operators
+
+        # A suite of common lattice Hamiltonians.
+        include("hamiltonians/latticemodels.jl")
+        export LatticeModelHamiltonians
     end
     using .Basics
     export Ansatz
@@ -83,6 +87,7 @@ module ADAPT
     export OptimOptimizer
     export Callbacks
     export Operators
+    export LatticeModelHamiltonians
 
     module OptimizationFreeADAPT
         include("optimizationfree/OptimizationFree.jl")
