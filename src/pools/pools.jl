@@ -1,10 +1,60 @@
 #= Set up various operator pools. =#
+#= TO DO: do the extra functions in MyPauliOperators need to be added to the PauliOperators.jl package? =#
+#= TO DO: tile operators by removing leading and trailing I's first. =#
 
 module OperatorPools
     import ..ADAPT
-    import PauliOperators: Pauli, PauliSum, ScaledPauli, ScaledPauliVector, clip!, otimes, ⊗, get_phase, ≈
+    import ..MyPauliOperators: otimes, ≈
+    import PauliOperators: Pauli, PauliSum, ScaledPauli, ScaledPauliVector, ⊗, ≈
     import Combinatorics: combinations
 
+#     """
+#         qubitexcitation(n::Int, i::Int, k::Int)
+#         qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
+
+#     Qubit excitation operators as defined in Yordanov et al. 2021.
+
+#     # Parameters
+#     - `n`: total number of qubits
+#     - `i,j,k,l`: qubit indices as defined in Yordanov's paper.
+
+#     # Returns
+#     - `PauliOperators.ScaledPauliVector`: the qubit excitation operator
+
+#         Note that all Pauli terms in any single qubit excitation operator commute,
+#             so the `ScaledPauliVector` representation is "safe".
+
+#     """
+#     function qubitexcitation(n::Int, i::Int, k::Int)
+#         return (1/2) .* [
+#              ScaledPauli(Pauli(n; X=[i], Y=[k])),
+#             -ScaledPauli(Pauli(n; X=[k], Y=[i])),
+#         ]
+#     end
+#     function qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
+#         return (1/8) .* [
+#              ScaledPauli(Pauli(n; X=[i,k,l], Y=[j])),
+#              ScaledPauli(Pauli(n; X=[j,k,l], Y=[i])),
+#              ScaledPauli(Pauli(n; X=[l], Y=[i,j,k])),
+#              ScaledPauli(Pauli(n; X=[k], Y=[i,j,l])),
+#             -ScaledPauli(Pauli(n; X=[i,j,l], Y=[k])),
+#             -ScaledPauli(Pauli(n; X=[i,j,k], Y=[l])),
+#             -ScaledPauli(Pauli(n; X=[j], Y=[i,k,l])),
+#             -ScaledPauli(Pauli(n; X=[i], Y=[j,k,l])),
+#         ]
+#     end
+
+    """                
+        fullpauli(n::Int)
+            
+    The pool of all (4^n) n-qubit Pauli operators.
+
+    # Parameters
+    - `n`: Number of qubits in the system
+
+    # Returns
+    - `pool`: the full pauli pool.
+    """ 
     function fullpauli(n::Int)
         pool = ScaledPauliVector{n}[]
         for plist in Iterators.product(ntuple(i->["I","X","Y","Z"],n)...)
@@ -12,23 +62,22 @@ module OperatorPools
             pauli = [ScaledPauli(Pauli(pstr))]
             push!(pool, pauli)
         end
-    #    pool = pool[2:end] # skip the first entry, which is just "III...."  
         return pool
     end
 
-    function qubitexcitationpool(n_system::Int)
-        """
-        The number of singles excitations = (n 2), and the doubles = 3*(n 4).
-                
+    """                
         qubitexcitationpool(n_system::Int)
+            
+    The number of singles excitations = (n 2), and the doubles = 3*(n 4).
+            
+    # Parameters
+    - `n_system`: Number of qubits in the system
 
-        # Parameters
-        - `n_system`: Number of qubits in the system
-                
-        # Returns
-        - `pool`: the qubit-excitation-based pool as defined in Communications Physics 4, 1 (2021).
-        - `target_and_source`: Dict mapping each pool operator to the target and source orbitals involved in the excitation. 
-        """      
+    # Returns
+    - `pool`: the qubit-excitation-based pool as defined in Communications Physics 4, 1 (2021).
+    - `target_and_source`: Dict mapping each pool operator to the target and source orbitals involved in the excitation. 
+    """               
+    function qubitexcitationpool(n_system::Int)   
         pool = ScaledPauliVector{n_system}[]
         target_and_source = Dict{ScaledPauliVector{n_system}, Vector{Vector{Int64}}}()
         # single excitations
@@ -41,8 +90,7 @@ module OperatorPools
         end
 
         # doubles
-        orbitals = collect(range(1,n_system))
-        excitation_orbs = collect(combinations(orbitals,4))
+        orbitals = collect(range(1,n_system)); excitation_orbs = collect(combinations(orbitals,4))
         for _orbs in excitation_orbs
             target_pair = [_orbs[1],_orbs[2]]; source_pair = [_orbs[3],_orbs[4]]
             new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
@@ -68,7 +116,6 @@ module OperatorPools
              ScaledPauli(Pauli(n; Y=[i,k])),
         ]
     end
-
     function qubitexcitation_complemented(n::Int, i::Int, j::Int, k::Int, l::Int)
         return (1/8) .* [
              -ScaledPauli(Pauli(n; X=[i,j,k,l])),
@@ -82,10 +129,19 @@ module OperatorPools
         ]
     end
 
+    """
+        qubitexcitationpool_complemented(n_system::Int)
+                                
+    Returns the complemented qubit excitation pool on n_system qubits, inspired from arXiv 2109.01318.
+
+    # Parameters
+    - `n_system`: Number of qubits in the system
+
+    # Returns
+    - `pool`: the complemented qubit-excitation-based pool.
+    - `target_and_source`: Dict mapping each pool operator to the target and source orbitals involved in the excitation. 
+    """                                
     function qubitexcitationpool_complemented(n_system::Int)
-        """
-        Returns the complemented qubit excitation pool on n_system qubits.
-        """      
         pool = ScaledPauliVector{n_system}[]
         target_and_source = Dict{ScaledPauliVector{n_system}, Vector{Vector{Int64}}}()
         for i in   1:n_system
@@ -96,8 +152,7 @@ module OperatorPools
             end
         end
 
-        orbitals = collect(range(1,n_system))
-        excitation_orbs = collect(combinations(orbitals,4))
+        orbitals = collect(range(1,n_system)); excitation_orbs = collect(combinations(orbitals,4))
         for _orbs in excitation_orbs
             target_pair = [_orbs[1],_orbs[2]]; source_pair = [_orbs[3],_orbs[4]]
             new_op = qubitexcitation_complemented(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
@@ -117,10 +172,19 @@ module OperatorPools
         return pool, target_and_source
     end
 
+    """
+        qubitadaptpool(n_system::Int)
+                                            
+    Returns the qubit ADAPT pool on n_system qubits as defined in PRX QUANTUM 2, 020310 (2021). 
+    It is generated by taking each qubit-excitation-based operator and breaking it into individual Pauli terms.
+
+    # Parameters
+    - `n_system`: Number of qubits in the system
+
+    # Returns
+    - `pool`: the qubit-ADAPT pool.                                                
+    """                                     
     function qubitadaptpool(n_system::Int)
-        """
-        Returns the qubit ADAPT pool on n_system qubits as defined in PRX QUANTUM 2, 020310 (2021).
-        """      
         pool = ScaledPauliVector{n_system}[]
         for i in   1:n_system
             for j in i+1:n_system
@@ -133,8 +197,7 @@ module OperatorPools
         end
 
         # doubles
-        orbitals = collect(range(1,n_system))
-        excitation_orbs = collect(combinations(orbitals,4))
+        orbitals = collect(range(1,n_system)); excitation_orbs = collect(combinations(orbitals,4))
         for _orbs in excitation_orbs
             target_pair = [_orbs[1],_orbs[2]]; source_pair = [_orbs[3],_orbs[4]]
             new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
@@ -160,14 +223,46 @@ module OperatorPools
         return pool
     end
 
-    function two_local_pool(n::Int64, axes=["I","X","Y","Z"])
+    """
+        one_local_pool(n::Int64, axes=["I","X","Y","Z"])
+                                            
+    Returns the one-local pool containing each one-local operator on n qubits. 
+
+    # Parameters
+    - `n`: Number of qubits in the system
+
+    # Returns
+    - `pool`: the one-local pool.                                                
+    """                                                                          
+    function one_local_pool(n::Int64, axes=["I","X","Y","Z"])
+        pool = ScaledPauliVector(n)
+        for i in 1:n
+            "X" in axes && (push!(pool, ScaledPauli(Pauli(n; X=i))))
+            "Y" in axes && (push!(pool, ScaledPauli(Pauli(n; Y=i))))
+            "Z" in axes && (push!(pool, ScaledPauli(Pauli(n; Z=i))))
+        end
+        return pool
+    end
+         
+    """
+        two_local_pool(n::Int64, axes=["X","Y","Z"])
+                                            
+    Returns the two-local pool containing each two-local operator on n qubits. 
+
+    # Parameters
+    - `n`: Number of qubits in the system
+
+    # Returns
+    - `pool`: the one-local pool.                                                
+    """                                                                                     
+    function two_local_pool(n::Int64, axes=["X","Y","Z"])
         pool = ScaledPauliVector{n}[]
         for pair in Iterators.product(ntuple(i->1:n, 2)...)
             i,j = pair
             if i < j
                 for pair2 in Iterators.product(ntuple(i->axes, 2)...)
                     a,b = pair2
-                    if a == "I" || b == "I"  # to include 1-local strings, use: if a == b == "I"
+                    if a == "I" || b == "I" 
                         continue
                     end
                     l = "I"^(i-1)*a*("I"^(j-i-1))*b*"I"^(n-j)
@@ -178,100 +273,41 @@ module OperatorPools
         end
         return pool
     end
+                                                                                                
+    """
+        oneandtwo_local_pool(n::Int64)
+                                            
+    Returns the union of the one-local and two-local pools on n qubits. 
 
-    function tile_operators(L1::Int, L2::Int, chosen_operators::Array, PBCs)
-        """
-        Constructs the tiled operators for a system of `L2` qubits, given the operators
-        chosen for a smaller problem instance on `L1` qubits.
+    # Parameters
+    - `n`: Number of qubits in the system
 
-        # Parameters
-        - `L1`: number of qubits for small problem instance 
-        - `L2`: number of qubits for large problem instance
-        - `chosen_operators`: list of operators chosen by ADAPT for small problem instance
-        - `PBCs`: periodic boundary conditions
-
-        # Returns
-        - `tiled_ops`: list of tiled operators in the form of a Vector{ScaledPauli}
-        """
-        @assert L2 >= L1 "L2 must be greater than L1."
-        # sort the chosen operators lexically
-        chosen_operators = sort(unique(chosen_operators))
-
-        l = length(chosen_operators)
-        tiled_op_strs = []
-        for i=1:l
-            el_str = chosen_operators[i]
-            str_stripped = strip(el_str,['I'])
-            permutations = PBCs ? (L2-1) : (L2-length(str_stripped))
-            tiled_op_str = str_stripped*"I"^(L2-length(str_stripped))
-            push!(tiled_op_strs,tiled_op_str)
-            for j = 1:permutations
-                new_s = tiled_op_str[end]*tiled_op_str[1:end-1]
-                tiled_op_str = new_s
-                push!(tiled_op_strs,tiled_op_str)     
-            end
-        end
-        tiled_op_strs = sort(unique(tiled_op_strs))
-
-    #     println(tiled_op_strs)
-        tiled_ops = ScaledPauliVector{L2}[]
-        for str in tiled_op_strs
-            push!(tiled_ops,[ScaledPauli(Pauli(str))])
-        end
-
-        return tiled_ops
+    # Returns
+    - `pool`: union of one-local and two-local pools.                                   
+    """                                                                                                
+    function oneandtwo_local_pool(n::Int64)
+        return vcat(
+            one_local_pool(n),
+            two_local_pool(n),
+        )
     end
 
-    function tile_op_strings(L1::Int, L2::Int, chosen_operators::Array, PBCs)
-        """
-        Constructs the tiled operators for a system of `L2` qubits, given the operators
-        chosen for a smaller problem instance on `L1` qubits.
+    """
+        tile_operators(L1::Int, L2::Int, chosen_operators::Vector{Vector{ScaledPauli{N}}}, PBCs)
+                                                                                                                    
+    Constructs the tiled operators for a system of `L2` qubits, given a set of operators
+    defined for a smaller problem instance on `L1` qubits.
 
-        # Parameters
-        - `L1`: number of qubits for small problem instance 
-        - `L2`: number of qubits for large problem instance
-        - `chosen_operators`: list of operators chosen by ADAPT for small problem instance
-        - `PBCs`: periodic boundary conditions
+    # Parameters
+    - `L1`: number of qubits for small problem instance 
+    - `L2`: number of qubits for large problem instance
+    - `chosen_operators`: list of operators for small problem instance
+    - `PBCs`: periodic boundary conditions
 
-        # Returns
-        - `tiled_ops`: list of tiled operators in the form of a Vector{String}
-        """
-        @assert L2 >= L1 "L2 must be greater than L1."
-        # sort the chosen operators lexically
-        chosen_operators = sort(unique(chosen_operators))
-
-        l = length(chosen_operators)
-        tiled_op_strs = []
-        for i=1:l
-            el_str = chosen_operators[i]
-            str_stripped = strip(el_str,['I'])
-            permutations = PBCs ? (L2-1) : (L2-length(str_stripped))
-            tiled_op_str = str_stripped*"I"^(L2-length(str_stripped))
-            push!(tiled_op_strs,tiled_op_str)
-            for j = 1:permutations
-                new_s = tiled_op_str[end]*tiled_op_str[1:end-1]
-                tiled_op_str = new_s
-                push!(tiled_op_strs,tiled_op_str)     
-            end
-        end
-        tiled_op_strs = sort(unique(tiled_op_strs))
-        return tiled_op_strs
-    end
-
-    function tile_ops(L1::Int, L2::Int, chosen_operators::Vector{Vector{ScaledPauli{N}}}, PBCs) where {N}
-        """
-        Constructs the tiled operators for a system of `L2` qubits, given the operators
-        chosen for a smaller problem instance on `L1` qubits.
-
-        # Parameters
-        - `L1`: number of qubits for small problem instance 
-        - `L2`: number of qubits for large problem instance
-        - `chosen_operators`: list of operators chosen by ADAPT for small problem instance
-        - `PBCs`: periodic boundary conditions
-
-        # Returns
-        - `tiled_ops`: list of tiled operators in the form of a Vector{ScaledPauli}
-        """
+    # Returns
+    - `tiled_ops`: tiled operators as a Vector{Vector{ScaledPauli}}
+    """                                                                                                                    
+    function tile_operators(L1::Int, L2::Int, chosen_operators::Vector{Vector{ScaledPauli{N}}}, PBCs) where {N}
         @assert L2 >= L1 "L2 must be greater than L1."
         if L2 == L1
             return chosen_operators
@@ -302,7 +338,7 @@ module OperatorPools
                 end            
             end
         end
-        # println(tiled_ops)
         return tiled_ops
     end
 end
+                                                                                                                                 

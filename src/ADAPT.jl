@@ -104,6 +104,11 @@ module ADAPT
         include("overlap/OverlapADAPT.jl")
         export Infidelity
     end
+
+    module ADAPTvariants
+        include("ADAPTvariants/RandomADAPT.jl")
+        export RAND_ADAPT
+    end
 end
 
 #=
