@@ -80,6 +80,10 @@ module ADAPT
         # A suite of common lattice Hamiltonians.
         include("hamiltonians/latticemodels.jl")
         export LatticeModelHamiltonians
+
+        # A suite of common operator pools.
+        include("pools/pools.jl")
+        export OperatorPools
     end
     using .Basics
     export Ansatz
@@ -88,6 +92,7 @@ module ADAPT
     export Callbacks
     export Operators
     export LatticeModelHamiltonians
+    export OperatorPools
 
     module OptimizationFreeADAPT
         include("optimizationfree/OptimizationFree.jl")

@@ -3,61 +3,30 @@
 import ADAPT
 import PauliOperators: Pauli, PauliSum, ScaledPauli, ScaledPauliVector, FixedPhasePauli, KetBitString, SparseKetBasis, clip!, otimes, ≈
 
-function Base.:≈(spv1::Vector{ScaledPauli{N}}, spv2::Vector{ScaledPauli{N}}) where {N}
-    if length(spv1) != length(spv2) return false end
-    for (sp1,sp2) in zip(spv1, spv2)
-        if !(sp1≈sp2)
-            return false
-        end
-    end
-    return true
-end
-
 # include("../additions_to_ADAPT/RandomADAPT.jl")
-# include("../additions_to_ADAPT/Pools.jl")
 # include("../additions_to_ADAPT/LieAlgebra.jl")
 
 # SYSTEM PARAMETERS
-L_small = 3; L_large = 4
+L_small = 4; L_large = 4
 Jxy = 1.0; Jz = 0.5; PBCs = false
 gradient_cutoff = 1e-4; maxiters = 500
-pooltype="fullpauli" # pooltype="fullpauli" # "qubitadapt" # "qubitexcitation"
+pooltype="qubitexcitation"  # pooltype = fullpauli || qubitadapt || qubitexcitation
 
 # BUILD OUT THE PROBLEM HAMILTONIAN: an open XXZ model
 XXZHam = ADAPT.LatticeModelHamiltonians.xyz_model(L_small, Jxy, Jxy, Jz, PBCs)
-println(XXZHam)
-exit()
-# Ham_terms = ScaledPauliVector{L_small}[]
-# for (key,val) in XXZHam.ops
-#     op = [ScaledPauli(val, key)]
-#     push!(Ham_terms, op)
-# end
-# println("Calculating DLA of Hamiltonian...")
-# t_0_Ham_Lie = time(); Ham_DLA = Lie_algebra_elements(Ham_terms); t_f_Ham_Lie = time(); dt = (t_f_Ham_Lie - t_0_Ham_Lie)/60.0
-# Ham_DLA_strs = [];
-# for op in Ham_DLA
-#     for sp in op
-#         pstr = string(sp.pauli)
-#         push!(Ham_DLA_strs, pstr)
-#     end
-# end
-# Ham_DLA_strs = sort(unique(Ham_DLA_strs))
-# println("DLA of Hamiltonian ",length(Ham_DLA_strs), " ",Ham_DLA_strs)
 
 # CONSTRUCT A REFERENCE STATE
-neel = "01"^(L_small >> 1)
-(L_small & 1 == 1) && (neel *= "0")
-neel_index = parse(Int128, neel, base=2)
+neel = "01"^(L_small >> 1); (L_small & 1 == 1) && (neel *= "0"); neel_index = parse(Int128, neel, base=2)
 
 # BUILD OUT THE POOL
 if pooltype=="fullpauli"
-    pool = fullpauli(L_small)
+    pool = ADAPT.OperatorPools.fullpauli(L_small)
 elseif pooltype == "qubitexcitation"
-    pool = qubitexcitationpool(L_small)
+    pool, target_and_source = ADAPT.OperatorPools.qubitexcitationpool(L_small)
 elseif pooltype == "qubitadapt"
     pool = qubitadaptpool(L_small)
 end
-# println("pool size ",length(pool))
+println("pool size ",length(pool));  #println("pool: ",pool)
 
 # SELECT THE PROTOCOLS
 adapt = RandomADAPT()
