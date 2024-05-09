@@ -24,7 +24,7 @@ end
 println("pool size ",length(pool));  #println("pool: ",pool)
 
 # SELECT THE PROTOCOLS
-adapt = ADAPT.ADAPTvariants.RAND_ADAPT
+adapt = ADAPT.Random_ADAPT.RANDOM_ADAPT
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
 gradient_cutoff = 1e-4; maxiters = 500
 
@@ -110,7 +110,6 @@ pool = ADAPT.OperatorPools.tile_operators(L_small, L_large, chosen_operators, PB
 
 # SELECT THE PROTOCOLS
 adapt = ADAPT.VANILLA
-# adapt = RandomADAPT()
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
 
 # INITIALIZE THE ANSATZ AND TRACE

@@ -11,7 +11,7 @@ operator to append to the ansatz randomly.
 
 """
 struct RandomADAPT <: ADAPT.AdaptProtocol end
-RAND_ADAPT = RandomADAPT()
+RANDOM_ADAPT = RandomADAPT()
 
 ADAPT.typeof_score(::RandomADAPT) = Float64
 

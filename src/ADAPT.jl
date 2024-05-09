@@ -105,9 +105,9 @@ module ADAPT
         export Infidelity
     end
 
-    module ADAPTvariants
-        include("ADAPTvariants/RandomADAPT.jl")
-        export RAND_ADAPT
+    module Random_ADAPT
+        include("randomADAPT/RandomADAPT.jl")
+        export RANDOM_ADAPT
     end
 end
 
