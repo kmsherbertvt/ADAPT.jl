@@ -4,24 +4,25 @@ import ADAPT
 import PauliOperators: Pauli, PauliSum, ScaledPauli, ScaledPauliVector, ≈
 
 # SYSTEM PARAMETERS
-L_small = 3; L_large = 6; Jxy = 1.0; Jz = 0.5; PBCs = false
-pooltype="fullpauli"  # fullpauli || qubitadapt || qubitexcitation
+L_small = 4; L_large = 4; Jxy = 1.0; Jz = 0.5; PBCs = false
+pooltype="qubitadapt"  # fullpauli || qubitadapt || qubitexcitation
 
 # BUILD OUT THE PROBLEM HAMILTONIAN: an open XXZ model
-XXZHam = ADAPT.LatticeModelHamiltonians.xyz_model(L_small, Jxy, Jxy, Jz, PBCs)
+XXZHam = ADAPT.Hamiltonians.LatticeHamiltonians.xyz_model(L_small, Jxy, Jxy, Jz, PBCs)
 
 # CONSTRUCT A REFERENCE STATE
 neel = "01"^(L_small >> 1); (L_small & 1 == 1) && (neel *= "0"); neel_index = parse(Int128, neel, base=2)
 
 # BUILD OUT THE POOL
 if pooltype=="fullpauli"
-    pool = ADAPT.OperatorPools.fullpauli(L_small)
+    pool = ADAPT.Pools.fullpauli(L_small)
 elseif pooltype == "qubitexcitation"
-    pool, target_and_source = ADAPT.OperatorPools.qubitexcitationpool(L_small)
+    pool, target_and_source = ADAPT.Pools.qubitexcitationpool(L_small)
 elseif pooltype == "qubitadapt"
-    pool = qubitadaptpool(L_small)
+    pool = ADAPT.Pools.qubitadaptpool(L_small)
 end
-println("pool size ",length(pool));  #println("pool: ",pool)
+println("pool size ",length(pool));  println("pool: ",pool)
+exit()
 
 # SELECT THE PROTOCOLS
 adapt = ADAPT.Random_ADAPT.RANDOM_ADAPT
@@ -88,7 +89,7 @@ println(length(chosen_operators), " chosen operators: ",chosen_operators,"\n")
 # RUN ADAPT-VQE ON THE LARGE PROBLEM INSTANCE
 
 # BUILD OUT THE PROBLEM HAMILTONIAN: an open XXZ model
-XXZHam = ADAPT.LatticeModelHamiltonians.xyz_model(L_large, Jxy, Jxy, Jz, PBCs)
+XXZHam = ADAPT.Hamiltonians.LatticeHamiltonians.xyz_model(L_large, Jxy, Jxy, Jz, PBCs)
 
 # EXACT DIAGONALIZATION
 module Exact_large
@@ -106,7 +107,7 @@ neel = "01"^(L_large >> 1); (L_large & 1 == 1) && (neel *= "0"); neel_index = pa
 
 # BUILD OUT THE POOL
 # Lie_algebra_elements(chosen_op_strings) # calculate the Lie algebra of the chosen operators
-pool = ADAPT.OperatorPools.tile_operators(L_small, L_large, chosen_operators, PBCs)
+pool = ADAPT.Pools.tile_operators(L_small, L_large, chosen_operators, PBCs)
 
 # SELECT THE PROTOCOLS
 adapt = ADAPT.VANILLA

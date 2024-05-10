@@ -1,4 +1,4 @@
-module LatticeModelHamiltonians
+module LatticeHamiltonians
     import PauliOperators: Pauli, PauliSum, clip!
 
     """

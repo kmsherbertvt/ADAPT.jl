@@ -2,47 +2,117 @@
 #= TO DO: do the extra functions in MyPauliOperators need to be added to the PauliOperators.jl package? =#
 #= TO DO: tile operators by removing leading and trailing I's first. =#
 
-module OperatorPools
-    import ..ADAPT
+module Pools
+    import LinearAlgebra: I
+
+    import PauliOperators
+    import PauliOperators: FixedPhasePauli, Pauli, ScaledPauli
+    import PauliOperators: ScaledPauliVector, PauliSum
+    import PauliOperators: clip!, jordan_wigner
+
     import ..MyPauliOperators: otimes, ≈
-    import PauliOperators: Pauli, PauliSum, ScaledPauli, ScaledPauliVector, ⊗, ≈
-    import Combinatorics: combinations
+    import PauliOperators: ⊗, ≈
 
-#     """
-#         qubitexcitation(n::Int, i::Int, k::Int)
-#         qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
+    """
+        qubitexcitation(n::Int, i::Int, k::Int)
+        qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
 
-#     Qubit excitation operators as defined in Yordanov et al. 2021.
+    Qubit excitation operators as defined in Yordanov et al. 2021.
 
-#     # Parameters
-#     - `n`: total number of qubits
-#     - `i,j,k,l`: qubit indices as defined in Yordanov's paper.
+    Note that Yordanov's unitaries are defined as `exp(iθG)` rather than `exp(-iθG)`,
+        so variational parameters will be off by a sign.
 
-#     # Returns
-#     - `PauliOperators.ScaledPauliVector`: the qubit excitation operator
+    # Parameters
+    - `n`: total number of qubits
+    - `i,j,k,l`: qubit indices as defined in Yordanov's paper.
 
-#         Note that all Pauli terms in any single qubit excitation operator commute,
-#             so the `ScaledPauliVector` representation is "safe".
+    # Returns
+    - `PauliOperators.ScaledPauliVector`: the qubit excitation operator
 
-#     """
-#     function qubitexcitation(n::Int, i::Int, k::Int)
-#         return (1/2) .* [
-#              ScaledPauli(Pauli(n; X=[i], Y=[k])),
-#             -ScaledPauli(Pauli(n; X=[k], Y=[i])),
-#         ]
-#     end
-#     function qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
-#         return (1/8) .* [
-#              ScaledPauli(Pauli(n; X=[i,k,l], Y=[j])),
-#              ScaledPauli(Pauli(n; X=[j,k,l], Y=[i])),
-#              ScaledPauli(Pauli(n; X=[l], Y=[i,j,k])),
-#              ScaledPauli(Pauli(n; X=[k], Y=[i,j,l])),
-#             -ScaledPauli(Pauli(n; X=[i,j,l], Y=[k])),
-#             -ScaledPauli(Pauli(n; X=[i,j,k], Y=[l])),
-#             -ScaledPauli(Pauli(n; X=[j], Y=[i,k,l])),
-#             -ScaledPauli(Pauli(n; X=[i], Y=[j,k,l])),
-#         ]
-#     end
+        Note that all Pauli terms in any single qubit excitation operator commute,
+            so the `ScaledPauliVector` representation is "safe".
+
+    """
+    function qubitexcitation(n::Int, i::Int, k::Int)
+        return (1/2) .* [
+             ScaledPauli(Pauli(n; X=[i], Y=[k])),
+            -ScaledPauli(Pauli(n; X=[k], Y=[i])),
+        ]
+    end
+
+    # TODO: Karunya says this is not the only 2-body QEB operator.
+    function qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
+        return (1/8) .* [
+             ScaledPauli(Pauli(n; X=[i,k,l], Y=[j])),
+             ScaledPauli(Pauli(n; X=[j,k,l], Y=[i])),
+             ScaledPauli(Pauli(n; X=[l], Y=[i,j,k])),
+             ScaledPauli(Pauli(n; X=[k], Y=[i,j,l])),
+            -ScaledPauli(Pauli(n; X=[i,j,l], Y=[k])),
+            -ScaledPauli(Pauli(n; X=[i,j,k], Y=[l])),
+            -ScaledPauli(Pauli(n; X=[j], Y=[i,k,l])),
+            -ScaledPauli(Pauli(n; X=[i], Y=[j,k,l])),
+        ]
+    end
+
+
+
+
+    """
+        hubbard_jw(graph::Array{T,2}, U, t)
+
+    A Hubbard Hamiltonian in the Jordan-Wigner basis.
+
+    Copied shamelessly from Diksha's ACSE repository.
+
+    # Parameters
+    - `graph`: an adjacency matrix identifying couplings. Must be symmetric.
+    - `U`: Coulomb interaction for all sites
+    - `t`: hopping energy for all couplings
+
+    # Returns
+    - `PauliOperators.PauliSum`: the Hamiltonian
+
+    """
+    function hubbard_hamiltonian(graph::Matrix{T}, U, t) where T
+        Ni, Nj = size(graph)
+        Ni == Nj || throw(DimensionMismatch)
+        Norb = Ni
+        N = 2*Norb
+        H = PauliSum(N)
+        for i in 1:Norb
+            ia = 2*i-1
+            ib = 2*i
+            for j in i+1:Norb
+                ja = 2*j-1
+                jb = 2*j
+                abs(graph[i,j]) > 1e-16 || continue
+
+                tij = jordan_wigner(ia, N)*jordan_wigner(ja,N)'
+                tij += jordan_wigner(ib, N)*jordan_wigner(jb,N)'
+                tij += adjoint(tij)
+                clip!(tij)
+                sum!(H,t*tij)
+            end
+
+            ni = jordan_wigner(ia, N)*jordan_wigner(ia,N)'*jordan_wigner(ib, N)*jordan_wigner(ib,N)'
+            sum!(H,U*ni)
+        end
+        return H
+    end
+
+    """
+        hubbard_hamiltonian(L::Int, U, t; pbc=false)
+
+    Convenience constructor for a 1D nearest-neighbor Hubbard model with L sites.
+
+    """
+    function hubbard_hamiltonian(L::Int, U, t; pbc=false)
+        A = Matrix{Bool}(I, L, L)
+        pbc && (A[L,1] = A[1,L] = true)
+        return hubbard_hamiltonian(A, U, t)
+    end
+
+
 
     """                
         fullpauli(n::Int)
@@ -80,36 +150,39 @@ module OperatorPools
     function qubitexcitationpool(n_system::Int)   
         pool = ScaledPauliVector{n_system}[]
         target_and_source = Dict{ScaledPauliVector{n_system}, Vector{Vector{Int64}}}()
-        # single excitations
+                            
         for i in 1:n_system
             for j in i+1:n_system
-                op = ADAPT.Operators.qubitexcitation(n_system, i, j)
+                # singles excitations
+                op = qubitexcitation(n_system, i, j)
                 push!(pool, op)
                 target_and_source[op] = [[i,j]]
+
+                # doubles excitations
+                for k in j+1:n_system
+                    for l in k+1:n_system
+                        target_pair = [i,j]; source_pair = [k,l]
+                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        push!(pool, new_op)
+                        target_and_source[new_op] = [target_pair,source_pair]
+
+                        target_pair = [i,k]; source_pair = [j,l]
+                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        push!(pool, new_op)
+                        target_and_source[new_op] = [target_pair,source_pair]
+
+                        target_pair = [j,k]; source_pair = [i,l]
+                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        push!(pool, new_op)
+                        target_and_source[new_op] = [target_pair,source_pair]
+                    end
+                end
             end
         end
-
-        # doubles
-        orbitals = collect(range(1,n_system)); excitation_orbs = collect(combinations(orbitals,4))
-        for _orbs in excitation_orbs
-            target_pair = [_orbs[1],_orbs[2]]; source_pair = [_orbs[3],_orbs[4]]
-            new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            push!(pool, new_op)
-            target_and_source[new_op] = [target_pair,source_pair]
-
-            target_pair = [_orbs[1],_orbs[3]]; source_pair = [_orbs[2],_orbs[4]]
-            new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            push!(pool, new_op)
-            target_and_source[new_op] = [target_pair,source_pair]
-
-            target_pair = [_orbs[2],_orbs[3]]; source_pair = [_orbs[1],_orbs[4]]
-            new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            push!(pool, new_op)
-            target_and_source[new_op] = [target_pair,source_pair]
-        end
-        return pool, target_and_source
+        return pool, target_and_source                                            
     end
 
+                                
     function qubitexcitation_complemented(n::Int, i::Int, k::Int)
         return (1/2) .* [
              ScaledPauli(Pauli(n; X=[i,k])),
@@ -144,32 +217,36 @@ module OperatorPools
     function qubitexcitationpool_complemented(n_system::Int)
         pool = ScaledPauliVector{n_system}[]
         target_and_source = Dict{ScaledPauliVector{n_system}, Vector{Vector{Int64}}}()
-        for i in   1:n_system
+                                            
+        for i in 1:n_system
             for j in i+1:n_system
+                # singles excitations
                 op = qubitexcitation_complemented(n_system, i, j)
                 push!(pool, op)
                 target_and_source[op] = [[i,j]]
+
+                # doubles excitations
+                for k in j+1:n_system
+                    for l in k+1:n_system
+                        target_pair = [i,j]; source_pair = [k,l]
+                        new_op = qubitexcitation_complemented(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        push!(pool, new_op)
+                        target_and_source[new_op] = [target_pair,source_pair]
+
+                        target_pair = [i,k]; source_pair = [j,l]
+                        new_op = qubitexcitation_complemented(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        push!(pool, new_op)
+                        target_and_source[new_op] = [target_pair,source_pair]
+
+                        target_pair = [j,k]; source_pair = [i,l]
+                        new_op = qubitexcitation_complemented(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        push!(pool, new_op)
+                        target_and_source[new_op] = [target_pair,source_pair]
+                    end
+                end
             end
         end
-
-        orbitals = collect(range(1,n_system)); excitation_orbs = collect(combinations(orbitals,4))
-        for _orbs in excitation_orbs
-            target_pair = [_orbs[1],_orbs[2]]; source_pair = [_orbs[3],_orbs[4]]
-            new_op = qubitexcitation_complemented(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            push!(pool, new_op)
-            target_and_source[new_op] = [target_pair,source_pair]
-
-            target_pair = [_orbs[1],_orbs[3]]; source_pair = [_orbs[2],_orbs[4]]
-            new_op = qubitexcitation_complemented(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            push!(pool, new_op)
-            target_and_source[new_op] = [target_pair,source_pair]
-
-            target_pair = [_orbs[2],_orbs[3]]; source_pair = [_orbs[1],_orbs[4]]
-            new_op = qubitexcitation_complemented(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            push!(pool, new_op)
-            target_and_source[new_op] = [target_pair,source_pair]
-        end
-        return pool, target_and_source
+        return pool, target_and_source 
     end
 
     """
@@ -186,39 +263,42 @@ module OperatorPools
     """                                     
     function qubitadaptpool(n_system::Int)
         pool = ScaledPauliVector{n_system}[]
-        for i in   1:n_system
+                                                                
+        for i in 1:n_system
             for j in i+1:n_system
-                excitation_op = ADAPT.Operators.qubitexcitation(n_system, i, j)
+                # singles operators
+                excitation_op = qubitexcitation(n_system, i, j)
                 for sp in excitation_op
                     sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
                     push!(pool, [sp_new])
                 end        
+
+                # doubles operators
+                for k in j+1:n_system
+                    for l in k+1:n_system
+                        target_pair = [i,j]; source_pair = [k,l]
+                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        for sp in new_op
+                            sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
+                            push!(pool, [sp_new])
+                        end                                                                                     
+
+                        target_pair = [i,k]; source_pair = [j,l]
+                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        for sp in new_op
+                            sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
+                            push!(pool, [sp_new])
+                        end                                                                                     
+
+                        target_pair = [j,k]; source_pair = [i,l]
+                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
+                        for sp in new_op
+                            sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
+                            push!(pool, [sp_new])
+                        end                                                                                     
+                    end
+                end
             end
-        end
-
-        # doubles
-        orbitals = collect(range(1,n_system)); excitation_orbs = collect(combinations(orbitals,4))
-        for _orbs in excitation_orbs
-            target_pair = [_orbs[1],_orbs[2]]; source_pair = [_orbs[3],_orbs[4]]
-            new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            for sp in new_op
-                sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
-                push!(pool, [sp_new])
-            end          
-
-            target_pair = [_orbs[1],_orbs[3]]; source_pair = [_orbs[2],_orbs[4]]
-            new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            for sp in new_op
-                sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
-                push!(pool, [sp_new])
-            end          
-
-            target_pair = [_orbs[2],_orbs[3]]; source_pair = [_orbs[1],_orbs[4]]
-            new_op = ADAPT.Operators.qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-            for sp in new_op
-                sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
-                push!(pool, [sp_new])
-            end          
         end
         return pool
     end
