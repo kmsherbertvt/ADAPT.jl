@@ -173,29 +173,93 @@ module Callbacks
     end
 
 
+    # """
+    #     ParameterTracer()
+
+    # Add the ansatz parameters to the running trace, under the key `:parameters`.
+
+    # Called for `adapt!` only.
+
+    # Each parameter is stored as a column in a matrix; each row is a different iteration.
+    # The existing trace is padded with columns of 0.0
+    #     to match the current number of parameters before a new row is added.
+
+    # Concatenating either rows or columns to a matrix is rather expensive
+    #     (it involves creating an entirely new matrix in each call),
+    #     so use this callback with care.
+
+    # Please note that the default implementation of this callback is unsuitable
+    #     (or at least the matrix requires some post-processing)
+    #     if the AdaptProtocol reorders parameters,
+    #     or even simply inserts new parameters anywhere other than the end.
+    # If you need a parameter tracer for such protocols,
+    #     you're probably best off implementing a new callback from scratch.
+    # (Maybe you could implement some clever permutation in the `adapt!` call?
+    #     But remember the callback is called *before* the parameter is added!)
+
+    # """
+    # struct ParameterTracer <: AbstractCallback end
+
+    # function (tracer::ParameterTracer)(
+    #     ::Data, ansatz::AbstractAnsatz, trace::Trace,
+    #     ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
+    # )
+    #     F = ADAPT.typeof_parameter(ansatz)
+    #     matrix = get(trace, :parameters, Matrix{F}(undef, 0, 0))
+
+    #     # PAD THE EXISTING MATRIX WITH ZEROS TO MATCH THE SIZE OF THE CURRENT ANSATZ
+    #     num_new_parameters = length(ansatz) - size(matrix, 2)
+    #     if num_new_parameters > 0
+    #         pad = zeros(F, size(matrix,1), num_new_parameters)
+    #         matrix = hcat(matrix, pad)
+    #     end
+
+    #     # APPEND THE CURRENT PARAMETERS
+    #     matrix = vcat(matrix, transpose(ADAPT.angles(ansatz)))
+    #     trace[:parameters] = matrix
+
+    #     return false
+    # end
+
+
     """
         ParameterTracer()
 
     Add the ansatz parameters to the running trace, under the key `:parameters`.
 
-    Called for `adapt!` only.
+    Only compatible when following a Tracer including :selected_index.
+    This is no great handicap since the principal point of this is
+        to be able to reconstruct an ansatz,
+        and you'll need the :selected_index for that also. ;)
 
-    Each parameter is stored as a column in a matrix; each row is a different iteration.
-    The existing trace is padded with columns of 0.0
-        to match the current number of parameters before a new row is added.
+    Parameters are stored in a matrix.
+    Each column is associated with an angle in the ansatz
+        (vanilla protocol sets the first column as the first parameter added to the ansatz
+        and the first one applied to the reference state).
+    Each row gives the optimized parameters for the corresponding ADAPT iteration.
 
-    Concatenating either rows or columns to a matrix is rather expensive
-        (it involves creating an entirely new matrix in each call),
-        so use this callback with care.
+    The adapt callback is responsible for adding a new row
+        (vanilla protocol is to initialize with the previously optimized parameters),
+        and for padding previous rows with zeros.
+    The optimization callback is responsible for keeping the last row updated
+        with the currently-best parameters for this choice of parameters.
+
+    Standard practice is to include the ParameterTracer AFTER the regular Tracer,
+        but BEFORE any ADAPT convergence Stoppers.
+    Thus, the parameter matrix INCLUDES columns for the last-selected parameter(s).
+    Standard practice for reconstructing an optimized ansatz of a converged trace
+        is to look at the PENULTIMATE row.
 
     Please note that the default implementation of this callback is unsuitable
         (or at least the matrix requires some post-processing)
         if the AdaptProtocol reorders parameters,
-        or even simply inserts new parameters anywhere other than the end.
+        or even simply inserts new parameters anywhere other than the end,
+        or even (currently) if parameters aren't initialized to zero,
+        or even (currently) if it adds more than one parameter at once.
+    (NOTE: These last two are easily adjusted
+        but will require a more complex `trace` precondition.)
     If you need a parameter tracer for such protocols,
-        you're probably best off implementing a new callback from scratch.
-    (Maybe you could implement some clever permutation in the `adapt!` call?
-        But remember the callback is called *before* the parameter is added!)
+        you'll need to dispatch to your own method.
 
     """
     struct ParameterTracer <: AbstractCallback end
@@ -207,16 +271,53 @@ module Callbacks
         F = ADAPT.typeof_parameter(ansatz)
         matrix = get(trace, :parameters, Matrix{F}(undef, 0, 0))
 
-        # PAD THE EXISTING MATRIX WITH ZEROS TO MATCH THE SIZE OF THE CURRENT ANSATZ
-        num_new_parameters = length(ansatz) - size(matrix, 2)
-        if num_new_parameters > 0
-            pad = zeros(F, size(matrix,1), num_new_parameters)
-            matrix = hcat(matrix, pad)
+        # GET THE CURRENT PARAMETERS AND NEW PARAMETERS
+        n0 = size(matrix, 2)                        # CURRENT # OF PARAMETERS
+        n = length(get(trace, :selected_index, 0))  # NEW # OF PARAMETERS
+        Δn = n - n0                                 # # OF NEW PARAMETERS
+
+        # DUPLICATE THE FINAL ROW
+        if size(matrix, 1) == 0     # FIRST ADAPTATION: no parameters to copy
+            matrix = Matrix{F}(undef, 1, n0)
+        else
+            matrix = vcat(matrix, matrix[end:end,:])
         end
 
-        # APPEND THE CURRENT PARAMETERS
-        matrix = vcat(matrix, transpose(ADAPT.angles(ansatz)))
+        # PAD THE EXISTING MATRIX WITH ZEROS TO MATCH THE SIZE OF THE CURRENT ANSATZ
+        if Δn > 0
+            pad = zeros(F, size(matrix,1), Δn)
+            matrix = hcat(matrix, pad)
+        end
         trace[:parameters] = matrix
+
+        return false
+    end
+
+    function (tracer::ParameterTracer)(
+        data::Data, ansatz::AbstractAnsatz, trace::Trace,
+        ::OptimizationProtocol, ::Observable, ::QuantumState,
+    )
+        F = ADAPT.typeof_parameter(ansatz)
+        matrix = get(trace, :parameters, Matrix{F}(undef, 0, 0))
+        x = ADAPT.angles(ansatz)
+
+        # PAD CURRENT MATRIX IF IT ISN'T LONG ENOUGH
+        #= NOTE: This should only happen in edge cases
+            like when the user is manually constructin their own ansatz
+            and doesn't pre-initialize the :parameter matrix. =#
+        if size(matrix, 1) == 0
+            matrix = Matrix{F}(undef, 1, size(matrix, 2))
+        end
+        
+        Δn = length(x) - size(matrix, 2)
+        if Δn > 0
+            pad = zeros(F, size(matrix,1), Δn)
+            matrix = hcat(matrix, pad)
+            trace[:parameters] = matrix
+        end
+
+        # SET THE LAST ROW
+        matrix[end,:] .= x
 
         return false
     end
