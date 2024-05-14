@@ -270,6 +270,7 @@ module Callbacks
             println(printer.io, "$(string(key)): $(data[key])")
         end
         println(printer.io)
+        flush(printer.io)
         return false
     end
 
@@ -285,6 +286,7 @@ module Callbacks
             println(printer.io, "$(string(key)): $(data[key])")
         end
         println(printer.io)
+        flush(printer.io)
         return false
     end
 
@@ -335,6 +337,7 @@ module Callbacks
             i % printer.ncol == 0 && println(printer.io)
         end
         println(printer.io)
+        flush(printer.io)
     end
 
     function (printer::ParameterPrinter)(
