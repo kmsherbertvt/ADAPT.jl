@@ -22,6 +22,7 @@ Modules = [
     ADAPT.Basics,
     ADAPT.Basics.Callbacks,
     ADAPT.Basics.Operators,
+    ADAPT.Basics.Pools,
 ]
 ```
 
@@ -30,6 +31,8 @@ Modules = [
 Modules = [
     ADAPT.OptimizationFreeADAPT,
     ADAPT.OverlapADAPT,
+    ADAPT.Degenerate_ADAPT,
+    ADAPT.Hamiltonians,
 ]
 ```
 

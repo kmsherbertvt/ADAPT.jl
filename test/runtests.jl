@@ -136,6 +136,18 @@ end
         )
     end
 
+    @testset "Degenerate-ADAPT" begin
+        ADAPT.validate(
+            ADAPT.Ansatz(Float64, pools[:ScaledPauliVector]),
+            ADAPT.Degenerate_ADAPT.DEG_ADAPT,
+            BFGS,
+            pools[:ScaledPauliVector],
+            observables[:PauliSum],
+            references[:Vector];
+            label = "ScaledPauli[] Pool, Statevector",
+        )
+    end
+
     @testset "Overlap" begin
         overlap = let
             ψ = zeros(ComplexF64, 1<<N)

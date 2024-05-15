@@ -264,11 +264,29 @@ function measure_commutator(
     return expectation_value(commutator, Ψ)
 end
 
+function Base.:≈(spv1::Vector{ScaledPauli{N}}, spv2::Vector{ScaledPauli{N}}) where {N}
+    if length(spv1) != length(spv2) return false end
+    for (sp1,sp2) in zip(spv1, spv2)
+        if !(sp1≈sp2)
+            return false
+        end
+    end
+    return true
+end
+        
+function otimes(sp::ScaledPauli{N}, p::Pauli{M}) where {N,M}
+    out_pauli = sp.pauli ⊗ p.pauli
+    out_coeff = sp.coeff * get_phase(p)
+    out = ScaledPauli{N+M}(out_coeff, out_pauli)
+    return out 
+end
 
-
-
-
-
+function otimes(p::Pauli{M}, sp::ScaledPauli{N}) where {M,N}
+    out_pauli = p.pauli ⊗ sp.pauli
+    out_coeff = sp.coeff * get_phase(p)
+    out = ScaledPauli{N+M}(out_coeff, out_pauli)
+    return out 
+end
 
 #= TODO: Calculate DLA
 
