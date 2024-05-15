@@ -4,11 +4,11 @@ import ADAPT
 import PauliOperators: Pauli, PauliSum, ScaledPauli, ScaledPauliVector, ≈
 
 # SYSTEM PARAMETERS
-L_small = 4; L_large = 4; Jxy = 1.0; Jz = 0.5; PBCs = false
-pooltype="qubitadapt"  # fullpauli || qubitadapt || qubitexcitation
+L_small = 3; L_large = 4; Jxy = 1.0; Jz = 0.5; PBCs = false
+pooltype="fullpauli"  # fullpauli || qubitadapt || qubitexcitation
 
 # BUILD OUT THE PROBLEM HAMILTONIAN: an open XXZ model
-XXZHam = ADAPT.Hamiltonians.LatticeHamiltonians.xyz_model(L_small, Jxy, Jxy, Jz, PBCs)
+XXZHam = ADAPT.Hamiltonians.xyz_model(L_small, Jxy, Jxy, Jz, PBCs)
 
 # CONSTRUCT A REFERENCE STATE
 neel = "01"^(L_small >> 1); (L_small & 1 == 1) && (neel *= "0"); neel_index = parse(Int128, neel, base=2)
@@ -21,11 +21,10 @@ elseif pooltype == "qubitexcitation"
 elseif pooltype == "qubitadapt"
     pool = ADAPT.Pools.qubitadaptpool(L_small)
 end
-println("pool size ",length(pool));  println("pool: ",pool)
-exit()
+println("pool size ",length(pool)); # println("pool: ",pool)
 
 # SELECT THE PROTOCOLS
-adapt = ADAPT.Random_ADAPT.RANDOM_ADAPT
+adapt = ADAPT.Degenerate_ADAPT.DEG_ADAPT
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
 gradient_cutoff = 1e-4; maxiters = 500
 
@@ -89,7 +88,7 @@ println(length(chosen_operators), " chosen operators: ",chosen_operators,"\n")
 # RUN ADAPT-VQE ON THE LARGE PROBLEM INSTANCE
 
 # BUILD OUT THE PROBLEM HAMILTONIAN: an open XXZ model
-XXZHam = ADAPT.Hamiltonians.LatticeHamiltonians.xyz_model(L_large, Jxy, Jxy, Jz, PBCs)
+XXZHam = ADAPT.Hamiltonians.xyz_model(L_large, Jxy, Jxy, Jz, PBCs)
 
 # EXACT DIAGONALIZATION
 module Exact_large

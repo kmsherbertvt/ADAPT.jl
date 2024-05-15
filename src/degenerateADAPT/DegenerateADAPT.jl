@@ -1,24 +1,24 @@
 import ..ADAPT
 
 """
-    RandomADAPT
+    DegenerateADAPT
 
 Score pool operators by their initial gradients if they were to be appended to the ansatz.
 Equivalently, score pool operators by the expectation value
     of the commutator of the pool operator with the observable.
-In the case where the scores are degenerate between multiple pool operators, choose the 
+In the case where the largest scores (gradients) are degenerate between multiple pool operators, choose the 
 operator to append to the ansatz randomly.
 
 """
-struct RandomADAPT <: ADAPT.AdaptProtocol end
-RANDOM_ADAPT = RandomADAPT()
+struct DegenerateADAPT <: ADAPT.AdaptProtocol end
+DEG_ADAPT = DegenerateADAPT()
 
-ADAPT.typeof_score(::RandomADAPT) = Float64
+ADAPT.typeof_score(::DegenerateADAPT) = Float64
 
 function ADAPT.adapt!(
     ansatz::ADAPT.AbstractAnsatz,
     trace::ADAPT.Trace,
-    adapt_type::RandomADAPT,
+    adapt_type::DegenerateADAPT,
     pool::ADAPT.GeneratorList,
     observable::ADAPT.Observable,
     reference::ADAPT.QuantumState,
@@ -67,7 +67,7 @@ end
 
 function ADAPT.calculate_score(
     ansatz::ADAPT.AbstractAnsatz,
-    adapt_type::RandomADAPT,
+    adapt_type::DegenerateADAPT,
     generator::ADAPT.Generator,
     observable::ADAPT.Observable,
     reference::ADAPT.QuantumState,
