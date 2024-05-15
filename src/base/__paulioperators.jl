@@ -264,8 +264,6 @@ function measure_commutator(
     return expectation_value(commutator, Ψ)
 end
 
-
-""" BEGIN: Added by Karunya """
 function Base.:≈(spv1::Vector{ScaledPauli{N}}, spv2::Vector{ScaledPauli{N}}) where {N}
     if length(spv1) != length(spv2) return false end
     for (sp1,sp2) in zip(spv1, spv2)
@@ -289,7 +287,6 @@ function otimes(p::Pauli{M}, sp::ScaledPauli{N}) where {M,N}
     out = ScaledPauli{N+M}(out_coeff, out_pauli)
     return out 
 end
-""" END: Added by Karunya """
 
 #= TODO: Calculate DLA
 
