@@ -100,22 +100,20 @@ module ADAPT
         export Infidelity
     end
 
-    module Random_ADAPT
-        include("randomADAPT/RandomADAPT.jl")
-        export RANDOM_ADAPT
+    module Degenerate_ADAPT
+        include("degenerateADAPT/DegenerateADAPT.jl")
+        export DEG_ADAPT
     end
 
     module Hamiltonians
         # A suite of common lattice Hamiltonians.
         include("hamiltonians/latticemodels.jl")
-        export LatticeHamiltonians
     end
 end
 
 #=
 
 TODO:
-- Some pools. Grab from Diksha's code.
 - Lie rank calculation, in pauli-dedicated code.
 
 =#
