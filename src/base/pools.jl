@@ -38,7 +38,6 @@ module Pools
         ]
     end
 
-    # TODO: Karunya says this is not the only 2-body QEB operator.
     function qubitexcitation(n::Int, i::Int, j::Int, k::Int, l::Int)
         return (1/8) .* [
              ScaledPauli(Pauli(n; X=[i,k,l], Y=[j])),
@@ -166,6 +165,7 @@ module Pools
         return pool, target_and_source 
     end
 
+    #= TODO: Fix definition of qubit ADAPT pool so duplicates don't appear. =#
     """
         qubitadaptpool(n_system::Int)
                                             
@@ -310,6 +310,7 @@ module Pools
         )
     end
 
+    #= TODO: Where should this function live? =#
     """
         tile_operators(L1::Int, L2::Int, chosen_operators::Vector{Vector{ScaledPauli{N}}}, PBCs)
                                                                                                                     
