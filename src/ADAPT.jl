@@ -76,6 +76,10 @@ module ADAPT
         # A suite of common operators, especially useful for constructing operator pools.
         include("base/Operators.jl")
         export Operators
+
+        # A suite of common operator pools.
+        include("base/pools.jl")
+        export Pools
     end
     using .Basics
     export Ansatz
@@ -83,6 +87,7 @@ module ADAPT
     export OptimOptimizer
     export Callbacks
     export Operators
+    export Pools
 
     module OptimizationFreeADAPT
         include("optimizationfree/OptimizationFree.jl")
@@ -94,12 +99,21 @@ module ADAPT
         include("overlap/OverlapADAPT.jl")
         export Infidelity
     end
+
+    module Degenerate_ADAPT
+        include("degenerateADAPT/DegenerateADAPT.jl")
+        export DEG_ADAPT
+    end
+
+    module Hamiltonians
+        # A suite of common lattice Hamiltonians.
+        include("hamiltonians/latticemodels.jl")
+    end
 end
 
 #=
 
 TODO:
-- Some pools. Grab from Diksha's code.
 - Lie rank calculation, in pauli-dedicated code.
 
 =#
