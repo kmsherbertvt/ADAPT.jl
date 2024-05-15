@@ -4,8 +4,7 @@ import .MyPauliOperators
 import .MyPauliOperators: SparseKetBasis
 import .MyPauliOperators: FixedPhasePauli, ScaledPauli, Pauli
 import .MyPauliOperators: ScaledPauliVector, PauliSum
-PauliOperators = MyPauliOperators
-# TODO: Replace `MyPauliOperators` with `PauliOperators`
+# TODO: Replace `MyPauliOperators` with `PauliOperators` throughout, once merged.
 
 import LinearAlgebra: mul!, dot
 
@@ -39,9 +38,9 @@ function ADAPT.evolve_state!(
     θ::ADAPT.Parameter,
     Ψ::ADAPT.QuantumState,
 )
-    angle = -θ * PauliOperators.get_phase(G) * PauliOperators.get_phase(G.pauli)'
-    PauliOperators.cis!(Ψ, G.pauli, angle)
-    Ψ isa SparseKetBasis && PauliOperators.clip!(Ψ)
+    angle = -θ * MyPauliOperators.get_phase(G) * MyPauliOperators.get_phase(G.pauli)'
+    MyPauliOperators.cis!(Ψ, G.pauli, angle)
+    Ψ isa SparseKetBasis && MyPauliOperators.clip!(Ψ)
     return Ψ
 end
 
@@ -50,9 +49,9 @@ function ADAPT.evolve_state!(
     θ::ADAPT.Parameter,
     Ψ::ADAPT.QuantumState,
 )
-    angle = -θ * G.coeff * PauliOperators.get_phase(G.pauli)'
-    PauliOperators.cis!(Ψ, G.pauli, angle)
-    Ψ isa SparseKetBasis && PauliOperators.clip!(Ψ)
+    angle = -θ * G.coeff * MyPauliOperators.get_phase(G.pauli)'
+    MyPauliOperators.cis!(Ψ, G.pauli, angle)
+    Ψ isa SparseKetBasis && MyPauliOperators.clip!(Ψ)
     return Ψ
 end
 
@@ -77,12 +76,12 @@ function ADAPT.evolve_state!(
 end
 
 
-
+# TEMP: Working function, with type instability.
 function ADAPT.evaluate(
     H::AnyPauli,
     Ψ::ADAPT.QuantumState,
 )
-    return real(PauliOperators.expectation_value(H, Ψ))
+    return real(MyPauliOperators.expectation_value(H, Ψ))
 end
 
 
@@ -137,7 +136,7 @@ function ADAPT.partial(
         ADAPT.evolve_state!(generator, parameter, costate)
     end
 
-    return 2 * real(PauliOperators.braket(observable, costate, state))
+    return 2 * real(MyPauliOperators.braket(observable, costate, state))
 end
 
 
@@ -174,7 +173,7 @@ function __make__costate(G::ScaledPauliVector, x, Ψ::SparseKetBasis)
         for j in i:length(G); ADAPT.evolve_state!(G[j], x, term); end   # LEFT EVOLUTION
         sum!(costate, term)
     end
-    PauliOperators.clip!(costate)
+    MyPauliOperators.clip!(costate)
     return costate
 end
 
@@ -223,7 +222,7 @@ function ADAPT.calculate_score(
     reference::ADAPT.QuantumState,
 )
     state = ADAPT.evolve_state(ansatz, reference)
-    return abs(PauliOperators.measure_commutator(generator, observable, state))
+    return abs(MyPauliOperators.measure_commutator(generator, observable, state))
 end
 
 function ADAPT.calculate_scores(
@@ -236,7 +235,7 @@ function ADAPT.calculate_scores(
     state = ADAPT.evolve_state(ansatz, reference)
     scores = Vector{ADAPT.typeof_score(adapt)}(undef, length(pool))
     for i in eachindex(pool)
-        scores[i] = abs(PauliOperators.measure_commutator(pool[i], observable, state))
+        scores[i] = abs(MyPauliOperators.measure_commutator(pool[i], observable, state))
     end
     return scores
 end
