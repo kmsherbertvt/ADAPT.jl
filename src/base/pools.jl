@@ -310,6 +310,28 @@ module Pools
         )
     end
 
+    """
+        minimal_complete_pool(n::Int64)
+
+    Return the minimal complete pool on `n` qubits corresponding to 
+    the `V` pool in the qubit-ADAPT paper (PRX QUANTUM 2, 020310 (2021)).
+    """
+    function minimal_complete_pool(n::Int64)
+        @assert n > 1 "This pool is defined for n>=2 qubits."
+        res = Array{String,1}(["ZY","YI"])
+        for i=3:n
+            tempres = Array{String,1}()
+            for pstr in res
+                push!(tempres,"Z"*pstr)
+            end
+            push!(tempres,"Y"*("I"^(i-1)))
+            push!(tempres,"IY"*("I"^(i-2)))
+            res = copy(tempres)
+        end
+        pool = [[ScaledPauli(Pauli(pstr))] for pstr in res]
+        return pool
+    end
+
     #= TODO: Where should this function live? =#
     """
         tile_operators(L1::Int, L2::Int, chosen_operators::Vector{Vector{ScaledPauli{N}}}, PBCs)
