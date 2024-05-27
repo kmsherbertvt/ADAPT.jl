@@ -105,6 +105,11 @@ module ADAPT
         export DEG_ADAPT
     end
 
+    module TETRIS_ADAPT
+        include("tetrisADAPT/TETRIS.jl")
+        export TETRIS
+    end
+
     module Hamiltonians
         # A suite of common lattice Hamiltonians.
         include("hamiltonians/latticemodels.jl")

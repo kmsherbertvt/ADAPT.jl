@@ -32,6 +32,7 @@ Modules = [
     ADAPT.OptimizationFreeADAPT,
     ADAPT.OverlapADAPT,
     ADAPT.Degenerate_ADAPT,
+    ADAPT.TETRIS_ADAPT,
     ADAPT.Hamiltonians,
 ]
 ```

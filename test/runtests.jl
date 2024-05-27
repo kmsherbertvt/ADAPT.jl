@@ -148,6 +148,18 @@ end
         )
     end
 
+    @testset "TETRIS-ADAPT" begin
+        ADAPT.validate(
+            ADAPT.Ansatz(Float64, pools[:ScaledPauliVector]),
+            ADAPT.TETRIS_ADAPT.TETRIS,
+            BFGS,
+            pools[:ScaledPauliVector],
+            observables[:PauliSum],
+            references[:Vector];
+            label = "ScaledPauli[] Pool, Statevector",
+        )
+    end
+
     @testset "Overlap" begin
         overlap = let
             ψ = zeros(ComplexF64, 1<<N)
