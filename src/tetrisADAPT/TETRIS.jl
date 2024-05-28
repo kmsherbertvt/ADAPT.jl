@@ -15,12 +15,11 @@ TETRIS = TETRISADAPT()
 ADAPT.typeof_score(::TETRISADAPT) = Float64
 
 function support(spv::ScaledPauliVector)
-    indices = Vector{Int64}()
+    indices = Set{Int64}()
     for sp in spv
         op_indices=findall(x -> x != 'I',string(sp.pauli))
-        append!(indices,op_indices)
+        union!(indices,op_indices)
     end
-    indices = unique(indices)
     return indices
 end
 
@@ -44,34 +43,20 @@ function ADAPT.adapt!(
     end
 
     # MAKE SELECTION
-    #= TODO: there is probably a better way to make the selection of operators, given possible 
-    gradient degeneracies =#
-    # for now, we start by choosing the op. with the largest gradient (in the case of 
-    # degeneracy, argmax gives the first index)
-    scores_copy = deepcopy(scores);
-    largest_score = maximum(scores_copy); index_of_largest_score = argmax(scores_copy) 
-    ops_to_add = [index_of_largest_score]
-    current_support = support(pool[ops_to_add[1]]); max_support = length(string(pool[1][1].pauli))
-    for count in range(1,length(scores_copy)-1)
-        for i in ops_to_add
-            scores_copy[i] = 0.0
-        end
-        next_largest_score = maximum(scores_copy); index_of_tentative_op = argmax(scores_copy) 
-        if next_largest_score > 1e-3
-            op_is_disjoint = true
-            if !isdisjoint(support(pool[index_of_tentative_op]), current_support)
-                op_is_disjoint = false
-            end
-            if op_is_disjoint
-                push!(ops_to_add, index_of_tentative_op)
-                append!(current_support, support(pool[index_of_tentative_op]))
-            end
-        end
-        scores_copy[index_of_tentative_op] = 0.0
-        if length(current_support) == max_support || next_largest_score < 1e-3
-            break
-        end
-    end  
+    candidates = Dict(pool .=> scores)
+    imap = Dict(pool .=> eachindex(pool))
+    ops_to_add = Int64[]
+
+    # remove candidate operators with scores below some threshold
+    filter!(p-> p.second >= 1e-3, candidates)
+
+    while !isempty(candidates)
+        largest_score, G = findmax(candidates)
+        G_support = support(G)
+        filter!(p-> isdisjoint(support(p.first), G_support), candidates)
+        push!(ops_to_add, imap[G])
+    end
+
     selected_indices = ops_to_add
     selected_scores = scores[selected_indices];
     selected_generators = pool[selected_indices];
