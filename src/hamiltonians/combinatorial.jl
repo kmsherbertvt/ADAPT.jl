@@ -28,7 +28,7 @@ function get_unweighted_maxcut(g::SimpleGraph)
 
     for e in edge_indices
         push!(edge_list, (src(e), dst(e), 1.0))
-
+    end
     return edge_list
 end
 
@@ -52,7 +52,7 @@ function get_weighted_maxcut(g::SimpleGraph, rng = _DEFAULT_RNG)
 
     for e in edge_indices
         push!(edge_list, (src(e), dst(e), rand(rng, Float64)))
-
+    end
     return edge_list
 end
 
