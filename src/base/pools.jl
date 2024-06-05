@@ -165,7 +165,6 @@ module Pools
         return pool, target_and_source 
     end
 
-    #= TODO: Fix definition of qubit ADAPT pool so duplicates don't appear. =#
     """
         qubitadaptpool(n_system::Int)
                                             
