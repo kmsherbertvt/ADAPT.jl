@@ -21,6 +21,7 @@ module QAOApools
         term = PauliSum(n)
         for i in 1:n
             term += ScaledPauli(Pauli(n; X=i))
+        end
 
         push!(pool, term)
         return pool
@@ -84,7 +85,8 @@ module QAOApools
                 push!(pool, ScaledPauli(Pauli(n; Y=[i,j])))
                 push!(pool, ScaledPauli(Pauli(n; Y=i, Z=j)))
                 push!(pool, ScaledPauli(Pauli(n; Z=i, Y=j)))
-        
+            end
+        end
         return pool
     end
 
