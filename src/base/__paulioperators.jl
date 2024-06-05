@@ -207,6 +207,41 @@ function Base.:*(ps1::ScaledPauliVector{N}, ps2::PauliSum{N}) where {N}
     end
     return out
 end
+function Base.:*(ps1::ScaledPauliVector{N}, ps2::ScaledPauliVector{N}) where {N}
+    out = ScaledPauliVector(N)
+    for sp1 in ps1
+        for sp2 in ps2
+            prod = sp1 * sp2
+            i = findfirst(sp -> sp.pauli == prod.pauli, out)
+            if isnothing(i)
+                push!(out, prod)
+            else
+                out[i] = out[i].pauli * (out[i].coeff + prod.coeff)
+            end
+        end
+    end
+    return out
+end
+function Base.:-(ps1::ScaledPauliVector{N}, ps2::ScaledPauliVector{N}) where {N}
+    out = ScaledPauliVector(N)
+    for sp1 in ps1
+        i = findfirst(sp -> sp.pauli == sp1.pauli, out)
+        if isnothing(i)
+            push!(out, sp1)
+        else
+            out[i] = out[i].pauli * (out[i].coeff + sp1.coeff)
+        end
+    end
+    for sp2 in ps2
+        i = findfirst(sp -> sp.pauli == sp2.pauli, out)
+        if isnothing(i)
+            push!(out, -1.0 * sp2)
+        else
+            out[i] = out[i].pauli * (out[i].coeff - sp2.coeff)
+        end
+    end
+    return out
+end
 
 function Base.:*(ps1::PauliSum{N}, op2::FixedPhasePauli{N}) where {N}
     out = PauliSum(N)
@@ -273,19 +308,19 @@ function Base.:≈(spv1::Vector{ScaledPauli{N}}, spv2::Vector{ScaledPauli{N}}) w
     end
     return true
 end
-        
+
 function otimes(sp::ScaledPauli{N}, p::Pauli{M}) where {N,M}
     out_pauli = sp.pauli ⊗ p.pauli
     out_coeff = sp.coeff * get_phase(p)
     out = ScaledPauli{N+M}(out_coeff, out_pauli)
-    return out 
+    return out
 end
 
 function otimes(p::Pauli{M}, sp::ScaledPauli{N}) where {M,N}
     out_pauli = p.pauli ⊗ sp.pauli
     out_coeff = sp.coeff * get_phase(p)
     out = ScaledPauli{N+M}(out_coeff, out_pauli)
-    return out 
+    return out
 end
 
 #= TODO: Calculate DLA
