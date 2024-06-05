@@ -35,6 +35,7 @@ Modules = [
     ADAPT.TETRIS_ADAPT,
     ADAPT.ADAPT_QAOA,
     ADAPT.Hamiltonians,
+    ADAPT.Hamiltonians.MaxCut,
 ]
 ```
 
