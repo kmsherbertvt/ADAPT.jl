@@ -34,7 +34,9 @@ observables = (
         sum!(H, Pauli(N; X=N))
         H
     end,
-    # TODO: ScaledPauliVector
+    ScaledPauliVector = let
+        [1.0 * Pauli(N; Z=[q,q+1]) for q in 1:N-1]
+    end,
     # TODO: ScaledPauli
     # TODO: Pauli
     Infidelity = let
@@ -157,6 +159,19 @@ end
             observables[:PauliSum],
             references[:Vector];
             label = "ScaledPauli[] Pool, Statevector",
+        )
+    end
+
+    @testset "ADAPT-QAOA" begin
+        ADAPT.validate(
+            ADAPT.ADAPT_QAOA.QAOAAnsatz(0.1, observables[:ScaledPauliVector]),
+            ADAPT.VANILLA,
+            BFGS,
+            pools[:ScaledPauliVector],
+            observables[:ScaledPauliVector],
+            references[:Vector];
+            label = "ScaledPauli[] Pool, Statevector",
+            scores = nothing,   # Default validation can't handle new ansatz indexing.
         )
     end
 

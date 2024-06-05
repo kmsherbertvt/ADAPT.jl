@@ -110,6 +110,11 @@ module ADAPT
         export TETRIS
     end
 
+    module ADAPT_QAOA
+        include("qaoa/QAOA.jl")
+        export QAOAAnsatz
+    end
+
     module Hamiltonians
         # A suite of common lattice Hamiltonians.
         include("hamiltonians/latticemodels.jl")

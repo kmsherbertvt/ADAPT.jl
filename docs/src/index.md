@@ -33,6 +33,7 @@ Modules = [
     ADAPT.OverlapADAPT,
     ADAPT.Degenerate_ADAPT,
     ADAPT.TETRIS_ADAPT,
+    ADAPT.ADAPT_QAOA,
     ADAPT.Hamiltonians,
 ]
 ```
