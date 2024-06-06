@@ -113,11 +113,15 @@ module ADAPT
     module ADAPT_QAOA
         include("qaoa/QAOA.jl")
         export QAOAAnsatz
+
+        include("qaoa/qaoa_pools.jl")
+        export QAOApools
     end
 
     module Hamiltonians
         # A suite of common lattice Hamiltonians.
         include("hamiltonians/latticemodels.jl")
+        include("hamiltonians/combinatorial.jl")
     end
 end
 
