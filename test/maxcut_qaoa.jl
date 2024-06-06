@@ -40,7 +40,12 @@ end
 println("Exact ground-state energy: ",Exact.E0)
 
 # BUILD OUT THE POOL
-pool = ADAPT.ADAPT_QAOA.QAOApools.qaoa_double_pool(n); println("Generator data type: ", typeof(pool[1]))
+pool = ADAPT.ADAPT_QAOA.QAOApools.qaoa_double_pool(n)
+
+# ANOTHER POOL OPTION
+#pool = ADAPT.Pools.two_local_pool(n)
+
+println("Generator data type: ", typeof(pool[1]))
 println("Note: in the current ADAPT-QAOA implementation, the observable and generators must have the same type.")
 
 # CONSTRUCT A REFERENCE STATE
