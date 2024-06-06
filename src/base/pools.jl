@@ -165,7 +165,6 @@ module Pools
         return pool, target_and_source 
     end
 
-    #= TODO: Fix definition of qubit ADAPT pool so duplicates don't appear. =#
     """
         qubitadaptpool(n_system::Int)
                                             
@@ -184,35 +183,20 @@ module Pools
         for i in 1:n_system
             for j in i+1:n_system
                 # singles operators
-                excitation_op = qubitexcitation(n_system, i, j)
-                for sp in excitation_op
-                    sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
-                    push!(pool, [sp_new])
-                end        
+                push!(pool, [ScaledPauli(Pauli(n_system; X=[i], Y=[j]))])
+                push!(pool, [ScaledPauli(Pauli(n_system; X=[j], Y=[i]))])
 
                 # doubles operators
                 for k in j+1:n_system
                     for l in k+1:n_system
-                        target_pair = [i,j]; source_pair = [k,l]
-                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-                        for sp in new_op
-                            sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
-                            push!(pool, [sp_new])
-                        end                                                                                     
-
-                        target_pair = [i,k]; source_pair = [j,l]
-                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-                        for sp in new_op
-                            sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
-                            push!(pool, [sp_new])
-                        end                                                                                     
-
-                        target_pair = [j,k]; source_pair = [i,l]
-                        new_op = qubitexcitation(n_system, target_pair[1], target_pair[2], source_pair[1], source_pair[2])
-                        for sp in new_op
-                            sp_new = ScaledPauli(1.0+0.0im, sp.pauli)
-                            push!(pool, [sp_new])
-                        end                                                                                     
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[i,k,l], Y=[j]))])
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[j,k,l], Y=[i]))])
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[l], Y=[i,j,k]))])
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[k], Y=[i,j,l]))])
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[i,j,l], Y=[k]))])
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[i,j,k], Y=[l]))])
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[j], Y=[i,k,l]))])
+                        push!(pool, [ScaledPauli(Pauli(n_system; X=[i], Y=[j,k,l]))])
                     end
                 end
             end

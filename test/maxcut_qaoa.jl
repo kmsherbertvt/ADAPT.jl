@@ -1,7 +1,6 @@
 #= Run ADAPT-QAOA on a MaxCut Hamiltonian. =#
 
 import Graphs
-
 import ADAPT
 import PauliOperators: ScaledPauliVector, FixedPhasePauli, KetBitString, SparseKetBasis
 import LinearAlgebra: norm
@@ -26,7 +25,6 @@ H = ADAPT.Hamiltonians.maxcut_hamiltonian(n, e_list)
 # ANOTHER WAY TO BUILD OUT THE PROBLEM HAMILTONIAN
 #d = 3 # degree of regular graph
 #H = ADAPT.Hamiltonians.MaxCut.random_regular_max_cut_hamiltonian(n, d)
-
 println("Observable data type: ",typeof(H))
 
 # EXACT DIAGONALIZATION

@@ -36,6 +36,7 @@ Modules = [
     ADAPT.ADAPT_QAOA,
     ADAPT.ADAPT_QAOA.QAOApools,
     ADAPT.Hamiltonians,
+    ADAPT.Hamiltonians.MaxCut,
 ]
 ```
 
