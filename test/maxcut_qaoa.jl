@@ -1,13 +1,30 @@
 #= Run ADAPT-QAOA on a MaxCut Hamiltonian. =#
 
+import Graphs
 import ADAPT
 import PauliOperators: ScaledPauliVector, FixedPhasePauli, KetBitString, SparseKetBasis
 import LinearAlgebra: norm
 
-n = 6; d = 3
+# DEFINE A GRAPH
+n = 6
+
+# EXAMPLE OF ERDOS-RENYI GRAPH
+prob = 0.5
+g = Graphs.erdos_renyi(n, prob)
+
+# EXAMPLE OF ANOTHER ERDOS-RENYI
+#ne = 7
+#g = Graphs.erdos_renyi(n, ne)
+
+# EXTRACT MAXCUT FROM GRAPH
+e_list = ADAPT.Hamiltonians.get_unweighted_maxcut(g)
 
 # BUILD OUT THE PROBLEM HAMILTONIAN
-H = ADAPT.Hamiltonians.MaxCut.random_regular_max_cut_hamiltonian(n, d)
+H = ADAPT.Hamiltonians.maxcut_hamiltonian(n, e_list)
+
+# ANOTHER WAY TO BUILD OUT THE PROBLEM HAMILTONIAN
+#d = 3 # degree of regular graph
+#H = ADAPT.Hamiltonians.MaxCut.random_regular_max_cut_hamiltonian(n, d)
 println("Observable data type: ",typeof(H))
 
 # EXACT DIAGONALIZATION
@@ -21,7 +38,12 @@ end
 println("Exact ground-state energy: ",Exact.E0)
 
 # BUILD OUT THE POOL
-pool = ADAPT.Pools.two_local_pool(n); println("Generator data type: ", typeof(pool[1]))
+pool = ADAPT.ADAPT_QAOA.QAOApools.qaoa_double_pool(n)
+
+# ANOTHER POOL OPTION
+#pool = ADAPT.Pools.two_local_pool(n)
+
+println("Generator data type: ", typeof(pool[1]))
 println("Note: in the current ADAPT-QAOA implementation, the observable and generators must have the same type.")
 
 # CONSTRUCT A REFERENCE STATE

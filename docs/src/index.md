@@ -34,6 +34,7 @@ Modules = [
     ADAPT.Degenerate_ADAPT,
     ADAPT.TETRIS_ADAPT,
     ADAPT.ADAPT_QAOA,
+    ADAPT.ADAPT_QAOA.QAOApools,
     ADAPT.Hamiltonians,
     ADAPT.Hamiltonians.MaxCut,
 ]
