@@ -1,7 +1,5 @@
 import ..ADAPT
 
-import ..ADAPT
-
 """
     QAOAAnsatz{F<:Parameter,G<:Generator}(
         observable::G,

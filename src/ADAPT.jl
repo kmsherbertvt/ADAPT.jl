@@ -122,6 +122,10 @@ module ADAPT
         # A suite of common lattice Hamiltonians.
         include("hamiltonians/latticemodels.jl")
         include("hamiltonians/combinatorial.jl")
+
+        # Methods to generate MaxCut Hamiltonians
+        include("hamiltonians/maxcut.jl")
+        export MaxCut
     end
 end
 

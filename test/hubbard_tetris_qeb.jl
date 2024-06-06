@@ -4,7 +4,7 @@ import ADAPT
 import PauliOperators: Pauli, PauliSum, ScaledPauli, ScaledPauliVector, FixedPhasePauli, KetBitString, SparseKetBasis
 
 # SYSTEM PARAMETERS
-L = 2; u = 0.25
+L = 4; u = 0.25
 
 # BUILD OUT THE PROBLEM HAMILTONIAN: an open 1d Hubbard lattice
 U = 4*u         # Dimensionless parameter u ≡ U/4|t|, and we'll set units so |t|=1.
