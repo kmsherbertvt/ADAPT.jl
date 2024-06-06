@@ -25,6 +25,7 @@ Take a graph object and extract edges for MaxCut.
 function get_unweighted_maxcut(g::Graphs.SimpleGraph)
     edge_indices = Graphs.edges(g)
     edge_list = [(Graphs.src(e), Graphs.dst(e), 1.0) for e in edge_indices]
+    return edge_list
 end
 
 
