@@ -1,7 +1,9 @@
 #= All the methods here are slightly modified from Sam's AdaptBarren code. =#
 module MaxCut
-    using Random
-    using Erdos
+    import Random: MersenneTwister
+    import ..get_unweighted_maxcut  # function defined in combinatorial.jl
+    import ..maxcut_hamiltonian  # function defined in combinatorial.jl
+    import Graphs.SimpleGraphs.random_regular_graph
     import PauliOperators: FixedPhasePauli, Pauli, ScaledPauli, ScaledPauliVector, PauliSum
     import PauliOperators: clip!
 
@@ -18,35 +20,10 @@ module MaxCut
         return mixer
     end
 
-    """
-        max_cut_hamiltonian(n::Int, edges::Vector{Tuple{Int, Int, T}}) where T<:Real
-
-    Return the max cut Hamiltonian acting on `n` qubits which corresponds to the edge
-    set `edges`.
-
-    # Examples
-
-    Elements of the edge set look like `(1,2,5.0)` corresponding to an edge between
-    vertices `1` and `2` with edge weight `5.0`.
-    """
-    function max_cut_hamiltonian(n::Int, edges::Vector{Tuple{Int, Int, T}}) where T<:Real
-        H = ScaledPauliVector{n}() 
-        for (i,j,w)=edges
-            term = ScaledPauliVector{n}() 
-            term = (-w/2.0)*ScaledPauli(Pauli(n)) 
-            push!(H, term)
-
-            term = ScaledPauliVector{n}()
-            term = (-w/2.0)*ScaledPauli(Pauli(n; Z=[i,j]))
-            push!(H, term)
-        end
-        return H
-    end
-
     function get_random_unweighted_graph_edges(n::Int, k::Int; rng = _DEFAULT_RNG)
-        seed = abs(rand(rng, Int64) % 10^7)
-        g = random_regular_graph(n, k, Network, seed=seed)
-        return [(i,j,1.0) for (i,j) in Erdos.edges(g)]
+        g =  random_regular_graph(n,k)
+        edge_list = get_unweighted_maxcut(g)
+        return [(i,j,1.0) for (i,j) in edge_list]
     end
 
     function randomize_edge_weights!(v::Vector{Tuple{Int, Int, T}}; rng = _DEFAULT_RNG) where T<:Number
@@ -71,6 +48,6 @@ module MaxCut
         if weighted
             randomize_edge_weights!(v; rng=rng)
         end
-        return max_cut_hamiltonian(n, v)
+        return maxcut_hamiltonian(n, v)
     end
 end
