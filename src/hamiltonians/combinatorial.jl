@@ -24,11 +24,11 @@ Take a graph object and extract edges for MaxCut.
 """
 function get_unweighted_maxcut(g::SimpleGraph)
     edge_indices = edges(g)
-    edge_list = Tuple[]
+    edge_list = [(src(e), dst(e), 1.0) for e in edge_indices]
 
-    for e in edge_indices
-        push!(edge_list, (src(e), dst(e), 1.0))
-    end
+    #for e in edge_indices
+    #    push!(edge_list, (src(e), dst(e), 1.0))
+    #end
     return edge_list
 end
 
@@ -48,17 +48,16 @@ Take a graph object and extract edges and assign edge weights.
 """
 function get_weighted_maxcut(g::SimpleGraph, rng = _DEFAULT_RNG)
     edge_indices = edges(g)
-    edge_list = Tuple[]
-
-    for e in edge_indices
-        push!(edge_list, (src(e), dst(e), rand(rng, Float64)))
-    end
+    edge_list = [(src(e), dst(e), rand(rng, Float64)) for e in edge_indices]
+    #for e in edge_indices
+    #    push!(edge_list, (src(e), dst(e), rand(rng, Float64)))
+    #end
     return edge_list
 end
 
 
 """
-    maxcut_hamiltonian(V::Int, Edges::Vector{Tuple{Int,Int,T}}) where T<Real
+    maxcut_hamiltonian(V::Int, Edges::Vector{Tuple{Int,Int,T}}) where T<:Real
 
 A MaxCut Hamiltonian defined on a graph containing only Pauli ZZ terms.
 
@@ -67,22 +66,18 @@ A MaxCut Hamiltonian defined on a graph containing only Pauli ZZ terms.
 - `Edges`: list of edges.
 
 # Returns
-- `PauliOperators.PauliSum`: the Hamiltonian
+- `H`: MaxCut Hamiltonian
 
 """
-function maxcut_hamiltonian(V,Elist)
-    H = PauliSum(V)
+function maxcut_hamiltonian(V::Int, Edges::Vector{Tuple{Int,Int,T}}) where T<:Real
+    H = ScaledPauliVector{V}()
 
     for (i,j,w)=Edges
-        term = PauliSum(V)
-        term += (-w/2.0)*Pauli(V; Z=[i,j])       
-        clip!(term)
-        sum!(H,term)
+        term = (-w/2.0)*ScaledPauli(Pauli(V; Z=[i,j]))       
+        push!(H,term)
 
-        term = PauliSum(V)
-        term += (-w/2.0)*Pauli(n)
-        clip!(term)
-        sum!(H,term)
+        term = (-w/2.0)*ScaledPauli(Pauli(V)) 
+        push!(H,term)
     end
 
     return H

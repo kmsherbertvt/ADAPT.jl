@@ -16,11 +16,12 @@ module QAOApools
     - `pool`: one element pool with qaoa mixer
     """
     function qaoa_mixer(n::Int64)
-        pool = ScaledPauliVector(n)
+        pool = ScaledPauliVector{n}[]
         
-        term = PauliSum(n)
+        term = []
+        print(term)
         for i in 1:n
-            term += ScaledPauli(Pauli(n; X=i))
+            push!(term, ScaledPauli(Pauli(n; X=i)))
         end
 
         push!(pool, term)
@@ -39,10 +40,10 @@ module QAOApools
     - `pool`: pool containing Xs only
     """
     function qaoa_single_x(n::Int64)
-        pool = ScaledPauliVector(n)
+        pool = ScaledPauliVector{n}[]
         
         for i in 1:n
-            push!(pool, ScaledPauli(Pauli(n; X=i)))
+            push!(pool, [ScaledPauli(Pauli(n; X=i))])
         end
         return pool
     end
@@ -81,10 +82,10 @@ module QAOApools
 
         for i in 1:(n-1)
             for j in (i+1):n
-                push!(pool, ScaledPauli(Pauli(n; X=[i,j])))
-                push!(pool, ScaledPauli(Pauli(n; Y=[i,j])))
-                push!(pool, ScaledPauli(Pauli(n; Y=i, Z=j)))
-                push!(pool, ScaledPauli(Pauli(n; Z=i, Y=j)))
+                push!(pool, [ScaledPauli(Pauli(n; X=[i,j]))])
+                push!(pool, [ScaledPauli(Pauli(n; Y=[i,j]))])
+                push!(pool, [ScaledPauli(Pauli(n; Y=i, Z=j))])
+                push!(pool, [ScaledPauli(Pauli(n; Z=i, Y=j))])
             end
         end
         return pool
