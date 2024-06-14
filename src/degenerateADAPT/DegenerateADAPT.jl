@@ -35,7 +35,7 @@ function ADAPT.adapt!(
     end
 
     # MAKE SELECTION
-    largest_score = maximum(scores); indices_of_largest_scores = findall(a->a==largest_score, scores) 
+    largest_score = maximum(scores); indices_of_largest_scores = findall(a->abs(a-largest_score)<=1e-3, scores) 
 #     println("gradient degeneracy: ",length(indices_of_largest_scores))
 #     println("operators with degenerate max. gradients: ",pool[indices_of_largest_scores])
     selected_index = rand(indices_of_largest_scores)    
