@@ -308,7 +308,7 @@ module Callbacks
         if size(matrix, 1) == 0
             matrix = Matrix{F}(undef, 1, size(matrix, 2))
         end
-        
+
         Δn = length(x) - size(matrix, 2)
         if Δn > 0
             pad = zeros(F, size(matrix,1), Δn)
@@ -597,9 +597,10 @@ module Callbacks
         ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
         adaptations = trace[:adaptation]
-        length(adaptations) < stopper.n && return false
+        length(adaptations) <= stopper.n && return false
+            #= NOTE: Ignore the "first" adaptation, for which the energy is not measured. =#
 
-        energies = trace[:energy][:adaptation]  # ENERGIES AT EACH ADAPTATION
+        energies = trace[:energy][adaptations[2:end]]   # ENERGIES AT EACH ADAPTATION
         last_n_energies = last(energies, stopper.n)
 
         energy_range = maximum(last_n_energies) - minimum(last_n_energies)
@@ -631,9 +632,12 @@ module Callbacks
     end
 
     function (stopper::FloorStopper)(
-        ::Data, ::AbstractAnsatz, trace::Trace,
+        ::Data, ansatz::AbstractAnsatz, trace::Trace,
         ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
+        # SKIP FIRST ADAPTATION (before any energies have been logged)
+        haskey(trace, :energy) || return false
+
         last_energy = last(trace[:energy])
         if abs(last_energy - stopper.floor) < stopper.threshold
             ADAPT.set_converged!(ansatz, true)
