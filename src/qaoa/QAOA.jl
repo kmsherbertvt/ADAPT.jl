@@ -170,3 +170,57 @@ function ADAPT.calculate_score(
     return abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
             generator, observable, state))
 end
+
+##########################################################################################
+#= HACK - Assume that ScaledPauliVector generators appearing in QAOA
+            consist only of commuting terms.
+
+    Motivation: evolve the Hamiltonian (explicitly commuting diagonal terms) faster.
+
+=#
+
+import LinearAlgebra: dot
+
+"""
+
+Carbon copy of the usual costate function with Pauli operators.
+
+The only difference is that we don't copy in the method defining special behavior
+    for ScaledPauliVectors in this namespace,
+    so those will be treated as though they consist only of commuting terms.
+
+"""
+function __make__costate(G, x, Ψ)
+    costate = -im * G * Ψ
+    ADAPT.evolve_state!(G, x, costate)
+    return costate
+end
+
+"""
+
+Carbon copy of the usual gradient with Pauli operators.
+
+The only difference is which `__make__costate` function is getting called.
+
+"""
+function ADAPT.gradient!(
+    result::AbstractVector,
+    ansatz::QAOAAnsatz,
+    observable::AnyPauli,
+    reference::ADAPT.QuantumState,
+)
+    ψ = ADAPT.evolve_state(ansatz, reference)   # FULLY EVOLVED ANSATZ |ψ⟩
+    λ = observable * ψ                          # CALCULATE |λ⟩ = H |ψ⟩
+
+    for i in reverse(eachindex(ansatz))
+        G, θ = ansatz[i]
+        ADAPT.evolve_state!(G', -θ, ψ)          # UNEVOLVE BRA
+        σ = __make__costate(G, θ, ψ)            # CALCULATE |σ⟩ = exp(-iθG) (-iG) |ψ⟩
+        result[i] = 2 * real(dot(σ, λ))         # CALCULATE GRADIENT ⟨λ|σ⟩ + h.t.
+        ADAPT.evolve_state!(G', -θ, λ)          # UNEVOLVE KET
+    end
+
+    return result
+end
+
+# TODO: In principle we could get even faster by replacing the `evolve_state!` above with a local version that assumes diagonality. This would save a lot of memory allocation so I anticipate a noticable time improvement, but it would not be asymptotically faster, so I don't deem it worth the effort. (If we do do this, also override evolve_state!(ansatz, state) and call the same method.)
