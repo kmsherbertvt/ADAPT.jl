@@ -173,6 +173,19 @@ end
             label = "ScaledPauli[] Pool, Statevector",
             scores = nothing,   # Default validation can't handle new ansatz indexing.
         )
+
+        qaoa_H = ADAPT.ADAPT_QAOA.QAOAObservable(observables[:ScaledPauliVector])
+        ADAPT.validate(
+            ADAPT.ADAPT_QAOA.DiagonalQAOAAnsatz(0.1, pools[:ScaledPauliVector], qaoa_H),
+            ADAPT.VANILLA,
+            BFGS,
+            pools[:ScaledPauliVector],
+            observables[:ScaledPauliVector],
+            references[:Vector];
+            label = "DiagonalQAOAAnsatz, ScaledPauli[] Pool, Statevector",
+            scores = nothing,   # Default validation can't handle new ansatz indexing.
+        )
+        # TODO: Once we have strict versioning, DiagonalQAOAAnsatz will replace QAOAAnsatz.
     end
 
     @testset "Overlap" begin

@@ -114,6 +114,10 @@ module ADAPT
         include("qaoa/QAOA.jl")
         export QAOAAnsatz
 
+        include("qaoa/DiagonalQAOA.jl")
+        export QAOAObservable, DiagonalQAOAAnsatz
+        # TODO: Promote DiagonalQAOA to be the only QAOA, once strict versioning is adopted.
+
         include("qaoa/qaoa_pools.jl")
         export QAOApools
     end
