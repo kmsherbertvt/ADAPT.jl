@@ -17,7 +17,7 @@ import LinearAlgebra: norm
 import Random; Random.seed!(0)
 
 # DEFINE A GRAPH
-n = 6
+n = 12
 
 # EXAMPLE OF ERDOS-RENYI GRAPH
 prob = 0.5
@@ -42,14 +42,23 @@ H = ADAPT.ADAPT_QAOA.QAOAObservable(H_spv)
 println("Observable data type: ",typeof(H))
 
 # EXACT DIAGONALIZATION (for accuracy assessment)
-#= NOTE: Comment this out to avoid building exponentially-sized matrices!
-    (but then you'll have to edit or remove the FloorStopper callback. =#
+#= NOTE: This block now scales as well as evolving the ansatz,
+    so there is no need to comment it out. =#
 module Exact
-    import ..H
-    using LinearAlgebra
-    Hm = Matrix(H); E, U = eigen(Hm) # NOTE: Comment out after first run when debugging.
-    ψ0 = U[:,1]
-    E0 = real(E[1])
+    import ..PauliOperators
+    import ..H, ..n
+    Emin = Ref(Inf); ketmin = Ref(PauliOperators.KetBitString{n}(0))
+    for v in 0:1<<n-1
+        ket = PauliOperators.KetBitString{n}(v)
+        vec = PauliOperators.SparseKetBasis{n,ComplexF64}(ket => 1)
+        Ev = real((H*vec)[ket])
+        if Ev < Emin[]
+            Emin[] = Ev
+            ketmin[] = ket
+        end
+    end
+    ψ0 = Vector(PauliOperators.SparseKetBasis{n,ComplexF64}(ketmin[] => 1))
+    E0 = Emin[]
 end
 println("Exact ground-state energy: ",Exact.E0)
 
@@ -66,12 +75,12 @@ println("Note: using the 'diagonal' ADAPT-QAOA ansatz, the observable type is fi
 ψ0 = ones(ComplexF64, 2^n) / sqrt(2^n); ψ0 /= norm(ψ0)
 
 # INITIALIZE THE ANSATZ AND TRACE
-ansatz = ADAPT.ADAPT_QAOA.MixedQAOAAnsatz(0.1, pool, H)
+ansatz = ADAPT.ADAPT_QAOA.DiagonalQAOAAnsatz(0.1, pool, H)
 # the first argument (a hyperparameter) can in principle be set to values other than 0.1
 trace = ADAPT.Trace()
 
 # SELECT THE PROTOCOLS
-adapt = ADAPT.VANILLA # Can be changed to `ADAPT.Degenerate_ADAPT.DEG_ADAPT`
+adapt = ADAPT.Degenerate_ADAPT.DEG_ADAPT # Can be changed to `ADAPT.VANILLA`
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
     #= NOTE: Add `iterations=10` to set max iterations per optimization loop. =#
 

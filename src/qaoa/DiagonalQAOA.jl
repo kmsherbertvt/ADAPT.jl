@@ -95,6 +95,21 @@ ADAPT.calculate_scores(
     dspv::QAOAObservable,
     reference::ADAPT.QuantumState,
 ) = ADAPT.calculate_scores(ansatz, adapt, pool, dspv.spv, reference)
+# TODO: Major dispatch ambiguity problem, see a little more at the bottom of the file.
+ADAPT.calculate_score(
+    ansatz::ADAPT.AbstractAnsatz,
+    adapt::ADAPT.Degenerate_ADAPT.DegenerateADAPT,
+    generator::ADAPT.Basics.AnyPauli,
+    dspv::QAOAObservable,
+    reference::ADAPT.QuantumState,
+) = ADAPT.calculate_score(ansatz, adapt, generator, dspv.spv, reference)
+ADAPT.calculate_scores(
+    ansatz::ADAPT.AbstractAnsatz,
+    adapt::ADAPT.Degenerate_ADAPT.DegenerateADAPT,
+    pool::ADAPT.Basics.AnyPauli,
+    dspv::QAOAObservable,
+    reference::ADAPT.QuantumState,
+) = ADAPT.calculate_scores(ansatz, adapt, pool, dspv.spv, reference)
 
 # Delegate multiplication (for co-state construction in gradient)
 Base.:*(dspv::QAOAObservable, factor) = dspv.spv * factor
