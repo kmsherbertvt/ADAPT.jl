@@ -10,6 +10,7 @@ At some point when this package is strictly versioned,
 
 import Graphs
 import ADAPT
+import PauliOperators
 import PauliOperators: ScaledPauliVector, FixedPhasePauli, KetBitString, SparseKetBasis
 import PauliOperators: PauliSum
 import LinearAlgebra: norm
@@ -98,3 +99,10 @@ callbacks = [
 # RUN THE ALGORITHM
 success = ADAPT.run!(ansatz, trace, adapt, vqe, pool, H, ψ0, callbacks)
 println(success ? "Success!" : "Failure - optimization didn't converge.")
+
+# SAMPLE MOST LIKELY BITSTRING
+ψ = ADAPT.evolve_state(ansatz, ψ0)      # THE FINAL STATEVECTOR
+ρ = abs2.(ψ)                            # THE FINAL PROBABILITY DISTRIBUTION
+pmax, imax = findmax(ρ)
+ketmax = KetBitString(n, imax-1)        # THE MOST LIKELY BITSTRING
+println(ketmax)
