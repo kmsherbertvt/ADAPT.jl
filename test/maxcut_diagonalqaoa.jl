@@ -60,8 +60,13 @@ module Exact
     end
     ψ0 = Vector(PauliOperators.SparseKetBasis{n,ComplexF64}(ketmin[] => 1))
     E0 = Emin[]
+
+    ρ = abs2.(ψ0)                           # THE FINAL PROBABILITY DISTRIBUTION
+    pmax, imax = findmax(ρ)
+    ketmax = PauliOperators.KetBitString(n, imax-1) # THE MOST LIKELY BITSTRING
 end
 println("Exact ground-state energy: ",Exact.E0)
+println("Best cut: ",Exact.ketmax)
 
 # BUILD OUT THE POOL
 pool = ADAPT.ADAPT_QAOA.QAOApools.qaoa_double_pool(n)

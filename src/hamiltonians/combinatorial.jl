@@ -66,10 +66,10 @@ function maxcut_hamiltonian(V::Int, Edges::Vector{Tuple{Int,Int,T}}) where T<:Re
     H = ScaledPauliVector{V}()
 
     for (i,j,w)=Edges
-        term = (-w/2.0)*ScaledPauli(Pauli(V; Z=[i,j]))       
+        term = (+w/2.0)*ScaledPauli(Pauli(V; Z=[i,j]))
         push!(H,term)
 
-        term = (-w/2.0)*ScaledPauli(Pauli(V)) 
+        term = (-w/2.0)*ScaledPauli(Pauli(V))
         push!(H,term)
     end
 
