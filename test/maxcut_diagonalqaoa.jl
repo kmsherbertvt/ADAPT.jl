@@ -17,6 +17,29 @@ import LinearAlgebra: norm
 
 import Random; Random.seed!(0)
 
+"""
+    ModalSampleTracer()
+
+At each adaptation, identify the most likely bitstring and save it as an integer.
+
+In the context of QAOA, this identifies the most reasonable partition.
+
+"""
+struct ModalSampleTracer <: ADAPT.AbstractCallback end
+
+function (tracer::ModalSampleTracer)(
+    ::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
+    ::ADAPT.AdaptProtocol, ::ADAPT.GeneratorList,
+    ::ADAPT.Observable, ψ0::ADAPT.QuantumState,
+)
+    ψ = ADAPT.evolve_state(ansatz, ψ0)      # THE FINAL STATEVECTOR
+    imode = argmax(abs2.(ψ))                # MOST LIKELY INDEX
+    zmode = imode-1                         # MOST LIKELY BITSTRING (as int)
+
+    push!( get!(trace, :modalsample, Any[]), zmode )
+    return false
+end
+
 # DEFINE A GRAPH
 n = 12
 
@@ -94,6 +117,7 @@ vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
 callbacks = [
     ADAPT.Callbacks.Tracer(:energy, :selected_index, :selected_score, :scores),
     ADAPT.Callbacks.ParameterTracer(),
+    ModalSampleTracer(),
     ADAPT.Callbacks.Printer(:energy, :selected_index, :selected_score),
     ADAPT.Callbacks.ScoreStopper(1e-3),
     ADAPT.Callbacks.ParameterStopper(100),
@@ -105,9 +129,8 @@ callbacks = [
 success = ADAPT.run!(ansatz, trace, adapt, vqe, pool, H, ψ0, callbacks)
 println(success ? "Success!" : "Failure - optimization didn't converge.")
 
-# SAMPLE MOST LIKELY BITSTRING
-ψ = ADAPT.evolve_state(ansatz, ψ0)      # THE FINAL STATEVECTOR
-ρ = abs2.(ψ)                            # THE FINAL PROBABILITY DISTRIBUTION
-pmax, imax = findmax(ρ)
-ketmax = KetBitString(n, imax-1)        # THE MOST LIKELY BITSTRING
-println(ketmax)
+# DISPLAY MOST LIKELY BITSTRINGS FROM EACH ADAPTATION
+println("Most likely bitstrings after each adaption:")
+for z in trace[:modalsample]
+    println(bitstring(z)[end-n+1:end])
+end
