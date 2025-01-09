@@ -2,7 +2,7 @@ import ..ADAPT
 import PauliOperators: ScaledPauliVector
 
 """
-    DiagonalQAOAAnsatz{F<:Parameter,G<:Generator}(
+    PlasticQAOAAnsatz{F<:Parameter,G<:Generator}(
         observable::QAOAObservable,
         γ0::F,
         generators::Vector{G},
@@ -14,6 +14,11 @@ import PauliOperators: ScaledPauliVector
 
 An ADAPT state suitable for ADAPT-QAOA.
 The standard ADAPT generators are interspersed with the observable itself.
+
+The only difference between `PlasticQAOAAnsatz` and `DiagonalQAOAAnsatz` is that
+    the latter initializes every new `γ` value to `γ0`,
+    while the former initializes every new `γ` value to that of the previous layer,
+    using `γ0` only for the first first round of optimization.
 
 # Type Parameters
 - `F`: the number type for the parameters (usually `Float64` is appropriate).
@@ -29,7 +34,7 @@ The standard ADAPT generators are interspersed with the observable itself.
 - `converged`: whether the current generators are flagged as converged
 
 """
-struct DiagonalQAOAAnsatz{F,G} <: ADAPT.AbstractAnsatz{F,G}
+struct PlasticQAOAAnsatz{F,G} <: ADAPT.AbstractAnsatz{F,G}
     observable::QAOAObservable
     γ0::F
     generators::Vector{G}
@@ -39,20 +44,20 @@ struct DiagonalQAOAAnsatz{F,G} <: ADAPT.AbstractAnsatz{F,G}
     converged::Ref{Bool}
 end
 
-ADAPT.__get__generators(ansatz::DiagonalQAOAAnsatz) = vec(permutedims(
+ADAPT.__get__generators(ansatz::PlasticQAOAAnsatz) = vec(permutedims(
     hcat(fill(ansatz.observable, length(ansatz.generators)), ansatz.generators)
 ))
-ADAPT.__get__parameters(ansatz::DiagonalQAOAAnsatz) = vec(permutedims(
+ADAPT.__get__parameters(ansatz::PlasticQAOAAnsatz) = vec(permutedims(
     hcat(ansatz.γ_parameters, ansatz.β_parameters)
 ))
     #= TODO: These functions are actually redundant.
         We should probably alter the `AbstractAnsatz` interface. =#
 
-ADAPT.__get__optimized(ansatz::DiagonalQAOAAnsatz) = ansatz.optimized
-ADAPT.__get__converged(ansatz::DiagonalQAOAAnsatz) = ansatz.converged
+ADAPT.__get__optimized(ansatz::PlasticQAOAAnsatz) = ansatz.optimized
+ADAPT.__get__converged(ansatz::PlasticQAOAAnsatz) = ansatz.converged
 
 """
-    DiagonalQAOAAnsatz(γ0, pool, observable)
+    PlasticQAOAAnsatz(γ0, pool, observable)
 
 Convenience constructor for initializing an empty ansatz.
 
@@ -64,7 +69,7 @@ Convenience constructor for initializing an empty ansatz.
 Note that the observable must be a `QAOAObservable`.
 
 """
-DiagonalQAOAAnsatz(γ0, pool, observable) = DiagonalQAOAAnsatz(
+PlasticQAOAAnsatz(γ0, pool, observable) = PlasticQAOAAnsatz(
     observable, γ0,
     eltype(pool)[],
     typeof(γ0)[],
@@ -79,25 +84,26 @@ DiagonalQAOAAnsatz(γ0, pool, observable) = DiagonalQAOAAnsatz(
 #= Convenience function for extracting the half-index of integer `ix`. =#
 # half(ix) = 1 + ((ix-1) >> 1)
 
-Base.size(ansatz::DiagonalQAOAAnsatz) = size(ansatz.generators) .<< 1
-Base.IndexStyle(::Type{<:DiagonalQAOAAnsatz}) = IndexLinear()
+Base.size(ansatz::PlasticQAOAAnsatz) = size(ansatz.generators) .<< 1
+Base.IndexStyle(::Type{<:PlasticQAOAAnsatz}) = IndexLinear()
 
-function Base.getindex(ansatz::DiagonalQAOAAnsatz, i::Int)
+function Base.getindex(ansatz::PlasticQAOAAnsatz, i::Int)
     ((i-1) & 1 == 0) && return ansatz.observable => ansatz.γ_parameters[half(i)]
     return ansatz.generators[half(i)] => ansatz.β_parameters[half(i)]
 end
 
-function Base.setindex!(ansatz::DiagonalQAOAAnsatz{F,G}, pair::Pair{G,F}, i::Int) where {F,G}
+function Base.setindex!(ansatz::PlasticQAOAAnsatz{F,G}, pair::Pair{G,F}, i::Int) where {F,G}
     #= TODO: We are making a major assumption,
             that setindex! is only called in the context of push!(G => x),
             i.e. attaching a new generator.
         Thus, we assume `ansatz[i] = (G => x)` is never called. =#
     ansatz.generators[half(i)] = pair.first
     ansatz.β_parameters[half(i)] = pair.second
-    ansatz.γ_parameters[half(i)] = ansatz.γ0
+    ansatz.γ_parameters[half(i)] = half(i) == 1 ? ansatz.γ0 : ansatz.γ_parameters[half(i)-1]
+        # NOTE: The previous line is the only change from `PlasticQAOAAnsatz`!
 end
 
-function Base.resize!(ansatz::DiagonalQAOAAnsatz, nl::Int)
+function Base.resize!(ansatz::PlasticQAOAAnsatz, nl::Int)
     resize!(ansatz.generators, half(nl))
     resize!(ansatz.β_parameters, half(nl))
     resize!(ansatz.γ_parameters, half(nl))
@@ -106,7 +112,7 @@ end
 ##########################################################################################
 #= Evolution. =#
 
-function ADAPT.angles(ansatz::DiagonalQAOAAnsatz)
+function ADAPT.angles(ansatz::PlasticQAOAAnsatz)
     #= TODO: We should be able to make this a view, to avoid allocations.
 
     Seems we ought replace a whole bunch of `copy(angles...)` with `collect(angles...)`,
@@ -116,7 +122,7 @@ function ADAPT.angles(ansatz::DiagonalQAOAAnsatz)
     return vec(permutedims(hcat(ansatz.γ_parameters, ansatz.β_parameters)))
 end
 
-function ADAPT.bind!(ansatz::DiagonalQAOAAnsatz{F,G}, x::AbstractVector{F}) where {F,G}
+function ADAPT.bind!(ansatz::PlasticQAOAAnsatz{F,G}, x::AbstractVector{F}) where {F,G}
     x = reshape(x, 2, :)
     ansatz.γ_parameters .= @view(x[1,:])
     ansatz.β_parameters .= @view(x[2,:])
@@ -147,7 +153,7 @@ AnyPauli = Union{Pauli, ScaledPauli, PauliSum, ScaledPauliVector}
 # TODO: Replace `MyPauliOperators` with `PauliOperators` throughout, once merged.
 
 function ADAPT.calculate_score(
-    ansatz::DiagonalQAOAAnsatz,
+    ansatz::PlasticQAOAAnsatz,
     ::ADAPT.Basics.VanillaADAPT,
     generator::AnyPauli,
     observable::AnyPauli,
@@ -160,7 +166,7 @@ function ADAPT.calculate_score(
 end
 
 function ADAPT.calculate_score(
-    ansatz::DiagonalQAOAAnsatz,
+    ansatz::PlasticQAOAAnsatz,
     ::ADAPT.Degenerate_ADAPT.DegenerateADAPT,
     generator::AnyPauli,
     observable::AnyPauli,
