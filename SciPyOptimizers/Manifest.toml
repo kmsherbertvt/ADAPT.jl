@@ -5,7 +5,7 @@ manifest_format = "2.0"
 project_hash = "0638a4d5665093d71a33a0829f64df4447955f1c"
 
 [[deps.ADAPT]]
-deps = ["FiniteDifferences", "Graphs", "KrylovKit", "LinearAlgebra", "Optim", "PauliOperators", "Random", "Serialization", "Test"]
+deps = ["BlockDavidson", "FiniteDifferences", "Graphs", "KrylovKit", "LinearAlgebra", "Optim", "PauliOperators", "Random", "Serialization", "Test"]
 path = ".."
 uuid = "cf1f529f-af3f-4d7a-b5f1-0e7d3fdd5852"
 version = "1.0.0-DEV"
