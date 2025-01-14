@@ -1,0 +1,11 @@
+name = "SciPyOptimizers"
+uuid = "8c823dec-c744-472c-b8e4-a63f457efcbf"
+authors = ["kmsherbertvt <kyle.sherbert@vt.edu>"]
+version = "0.1.0"
+
+[deps]
+ADAPT = "cf1f529f-af3f-4d7a-b5f1-0e7d3fdd5852"
+SciPy = "ebc72ef8-9537-4fb0-b64e-ac76025fed2d"
+
+[compat]
+SciPy = "0.1.4"
