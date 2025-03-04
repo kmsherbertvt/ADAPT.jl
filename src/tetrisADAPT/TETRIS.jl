@@ -9,8 +9,9 @@ TETRIS-ADAPT is a modified version of ADAPT-VQE in which multiple operators with
 support are added to the ansatz at each iteration. They are chosen by selecting from 
 operators ordered in decreasing magnitude of gradients.
 """
-struct TETRISADAPT <: ADAPT.AdaptProtocol end
-TETRIS = TETRISADAPT()
+struct TETRISADAPT{F} <: ADAPT.AdaptProtocol 
+    gradient_threshold::F
+end
 
 ADAPT.typeof_score(::TETRISADAPT) = Float64
 
@@ -48,7 +49,7 @@ function ADAPT.adapt!(
     ops_to_add = Int64[]
 
     # remove candidate operators with scores below some threshold
-    filter!(p-> p.second >= 1e-3, candidates)
+    filter!(p-> p.second >= adapt_type.gradient_threshold, candidates)
 
     while !isempty(candidates)
         largest_score, G = findmax(candidates)

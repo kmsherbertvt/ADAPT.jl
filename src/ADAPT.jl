@@ -102,12 +102,12 @@ module ADAPT
 
     module Degenerate_ADAPT
         include("degenerateADAPT/DegenerateADAPT.jl")
-        export DEG_ADAPT
+        export DegenerateADAPT
     end
 
     module TETRIS_ADAPT
         include("tetrisADAPT/TETRIS.jl")
-        export TETRIS
+        export TETRISADAPT
     end
 
     module ADAPT_QAOA

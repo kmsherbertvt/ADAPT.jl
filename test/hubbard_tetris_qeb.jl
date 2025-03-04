@@ -33,9 +33,9 @@ ansatz = ADAPT.Ansatz(Float64, pool)
 trace = ADAPT.Trace()
 
 # SELECT THE PROTOCOLS
-adapt = ADAPT.TETRIS_ADAPT.TETRIS
-vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
 gradient_cutoff = 1e-4; maxiters = 500
+adapt = ADAPT.TETRIS_ADAPT.TETRISADAPT(gradient_cutoff)
+vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
 
 # SELECT THE CALLBACKS
 callbacks = [

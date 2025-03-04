@@ -59,7 +59,7 @@ ansatz = ADAPT.ADAPT_QAOA.QAOAAnsatz(0.1, H)
 trace = ADAPT.Trace()
 
 # SELECT THE PROTOCOLS
-adapt = ADAPT.VANILLA # Can be changed to `ADAPT.Degenerate_ADAPT.DEG_ADAPT`
+adapt = ADAPT.VANILLA # Can be changed to `ADAPT.Degenerate_ADAPT.DegenerateADAPT(1e-8) `
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
     #= NOTE: Add `iterations=10` to set max iterations per optimization loop. =#
 
