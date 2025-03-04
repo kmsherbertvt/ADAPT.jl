@@ -10,8 +10,9 @@ In the case where the largest scores (gradients) are degenerate between multiple
 operator to append to the ansatz randomly.
 
 """
-struct DegenerateADAPT <: ADAPT.AdaptProtocol end
-DEG_ADAPT = DegenerateADAPT()
+struct DegenerateADAPT{F} <: ADAPT.AdaptProtocol 
+    gradient_threshold::F
+end
 
 ADAPT.typeof_score(::DegenerateADAPT) = Float64
 
@@ -35,9 +36,8 @@ function ADAPT.adapt!(
     end
 
     # MAKE SELECTION
-    largest_score = maximum(scores); indices_of_largest_scores = findall(a->abs(a-largest_score)<=1e-3, scores) 
-#     println("gradient degeneracy: ",length(indices_of_largest_scores))
-#     println("operators with degenerate max. gradients: ",pool[indices_of_largest_scores])
+    largest_score = maximum(scores); 
+    indices_of_largest_scores = findall(a->abs(a-largest_score) <= adapt_type.gradient_threshold, scores) 
     selected_index = rand(indices_of_largest_scores)    
     selected_score = scores[selected_index]
     selected_generator = pool[selected_index]

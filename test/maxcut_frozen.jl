@@ -84,7 +84,7 @@ callbacks = [
 ]
 
 # BUILD OUT THE STATIC ADAPT OBJECTS
-adapt = ADAPT.VANILLA # Can be changed to `ADAPT.Degenerate_ADAPT.DEG_ADAPT`
+adapt = ADAPT.VANILLA # Can be changed to `ADAPT.Degenerate_ADAPT.DegenerateADAPT(1e-8) `
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6, iterations=1000)
 pool = ADAPT.ADAPT_QAOA.QAOApools.qaoa_double_pool(n)
 

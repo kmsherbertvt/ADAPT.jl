@@ -111,7 +111,7 @@ ansatz = ADAPT.ADAPT_QAOA.PlasticQAOAAnsatz(0.1, pool, H)
 trace = ADAPT.Trace()
 
 # SELECT THE PROTOCOLS
-adapt = ADAPT.Degenerate_ADAPT.DEG_ADAPT # Can be changed to `ADAPT.VANILLA`
+adapt = ADAPT.Degenerate_ADAPT.DegenerateADAPT(1e-8)  # Can be changed to `ADAPT.VANILLA`
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
     #= NOTE: Add `iterations=10` to set max iterations per optimization loop. =#
 

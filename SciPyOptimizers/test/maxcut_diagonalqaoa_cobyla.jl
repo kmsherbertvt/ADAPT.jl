@@ -108,7 +108,7 @@ ansatz = ADAPT.ADAPT_QAOA.DiagonalQAOAAnsatz(0.1, pool, H)
 trace = ADAPT.Trace()
 
 # SELECT THE PROTOCOLS
-adapt = ADAPT.Degenerate_ADAPT.DEG_ADAPT # Can be changed to `ADAPT.VANILLA`
+adapt = ADAPT.Degenerate_ADAPT.DegenerateADAPT(1e-8)  # Can be changed to `ADAPT.VANILLA`
 vqe = SciPyOptimizers.SciPyOptimizer("COBYLA";
     tol=1e-6,       # Not exactly sure what this entails, honestly...
     rhobeg=2π/10,   # Reasonable initial changes to values.

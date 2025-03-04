@@ -141,7 +141,7 @@ end
     @testset "Degenerate-ADAPT" begin
         ADAPT.validate(
             ADAPT.Ansatz(Float64, pools[:ScaledPauliVector]),
-            ADAPT.Degenerate_ADAPT.DEG_ADAPT,
+            ADAPT.Degenerate_ADAPT.DegenerateADAPT(1e-4),
             BFGS,
             pools[:ScaledPauliVector],
             observables[:PauliSum],
@@ -153,7 +153,7 @@ end
     @testset "TETRIS-ADAPT" begin
         ADAPT.validate(
             ADAPT.Ansatz(Float64, pools[:ScaledPauliVector]),
-            ADAPT.TETRIS_ADAPT.TETRIS,
+            ADAPT.TETRIS_ADAPT.TETRISADAPT(1e-4),
             BFGS,
             pools[:ScaledPauliVector],
             observables[:PauliSum],
